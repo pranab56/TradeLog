@@ -1,26 +1,135 @@
 @import "tailwindcss";
+@import "tw-animate-css";
+@import "shadcn/tailwind.css";
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
+@theme {
+  --radius: 1rem;
+
+  --color-background: #F5F5F5;
+  --color-foreground: #111111;
+  --color-card: #FFFFFF;
+  --color-card-foreground: #111111;
+  --color-popover: #FFFFFF;
+  --color-popover-foreground: #111111;
+  --color-primary: #4CAF50;
+  --color-primary-foreground: #FFFFFF;
+  --color-secondary: #E0E0E0;
+  --color-secondary-foreground: #111111;
+  --color-muted: #F0F0F0;
+  --color-muted-foreground: #555555;
+  --color-accent: rgba(76, 175, 80, 0.1);
+  --color-accent-foreground: #4CAF50;
+  --color-destructive: #F44336;
+  --color-border: #DDDDDD;
+  --color-input: #DDDDDD;
+  --color-ring: #4CAF50;
+
+  --color-profit: #4CAF50;
+  --color-loss: #F44336;
+
+  --color-sidebar: #FFFFFF;
+  --color-sidebar-foreground: #111111;
+  --color-sidebar-primary: #4CAF50;
+  --color-sidebar-primary-foreground: #FFFFFF;
+  --color-sidebar-accent: #F5F5F5;
+  --color-sidebar-accent-foreground: #4CAF50;
+  --color-sidebar-border: #DDDDDD;
+  --color-sidebar-ring: #4CAF50;
 }
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
-
-@media (prefers-color-scheme: dark) {
+/* Base Styles outside @theme */
+@layer base {
   :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+    --background: #F5F5F5;
+    --foreground: #111111;
+    --card: #FFFFFF;
+    --card-foreground: #111111;
+    --popover: #FFFFFF;
+    --popover-foreground: #111111;
+    --primary: #4CAF50;
+    --primary-foreground: #FFFFFF;
+    --secondary: #E0E0E0;
+    --secondary-foreground: #111111;
+    --muted: #F0F0F0;
+    --muted-foreground: #555555;
+    --accent: #4CAF5015;
+    --accent-foreground: #4CAF50;
+    --destructive: #F44336;
+    --border: #DDDDDD;
+    --input: #DDDDDD;
+    --ring: #4CAF50;
+
+    --profit: #4CAF50;
+    --loss: #F44336;
+
+    --sidebar: #FFFFFF;
+    --sidebar-foreground: #111111;
+    --sidebar-primary: #4CAF50;
+    --sidebar-primary-foreground: #FFFFFF;
+    --sidebar-accent: #F5F5F5;
+    --sidebar-accent-foreground: #4CAF50;
+    --sidebar-border: #DDDDDD;
+    --sidebar-ring: #4CAF50;
+  }
+
+  .dark {
+    --background: #121212;
+    --foreground: #EEEEEE;
+    --card: #1E1E1E;
+    --card-foreground: #EEEEEE;
+    --popover: #1A1A1A;
+    --popover-foreground: #EEEEEE;
+    --primary: #66FF66;
+    --primary-foreground: #121212;
+    --secondary: #2C2C2C;
+    --secondary-foreground: #EEEEEE;
+    --muted: #252525;
+    --muted-foreground: #AAAAAA;
+    --accent: #66FF6620;
+    --accent-foreground: #66FF66;
+    --destructive: #FF6666;
+    --border: #444444;
+    --input: #444444;
+    --ring: #66FF66;
+
+    --profit: #66FF66;
+    --loss: #FF6666;
+
+    --sidebar: #1A1A1A;
+    --sidebar-foreground: #EEEEEE;
+    --sidebar-primary: #66FF66;
+    --sidebar-primary-foreground: #121212;
+    --sidebar-accent: #2C2C2C;
+    --sidebar-accent-foreground: #66FF66;
+    --sidebar-border: #444444;
+    --sidebar-ring: #66FF66;
+  }
+
+  * {
+    @apply border-border outline-ring/50 transition-colors duration-300;
+  }
+
+  body {
+    @apply bg-background text-foreground;
   }
 }
 
-body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+.glass {
+  background: rgba(255, 255, 255, 0.05);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.dark .glass {
+  background: rgba(0, 0, 0, 0.2);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.profit-text {
+  color: var(--profit);
+}
+
+.loss-text {
+  color: var(--loss);
 }
