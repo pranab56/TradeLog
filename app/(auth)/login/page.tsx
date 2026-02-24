@@ -1,0 +1,132 @@
+'use client';
+
+import { Loader2, Lock, LogIn, Mail } from 'lucide-react';
+import Link from 'next/link';
+import { useRouter } from 'next/navigation';
+import { useRef, useState } from 'react';
+
+export default function LoginPage() {
+  const [formData, setFormData] = useState({ email: '', password: '' });
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
+  const router = useRouter();
+  const formRef = useRef(null);
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setLoading(true);
+    setError('');
+
+    try {
+      const res = await fetch('/api/auth/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(formData),
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        if (data.needsVerification) {
+          router.push(`/verify?email=${encodeURIComponent(formData.email)}`);
+          return;
+        }
+        throw new Error(data.error || 'Login failed');
+      }
+
+      // Success logic - in a real app, you'd update global state here
+      // For now, redirect to dashboard
+      router.push('/');
+    } catch (err: any) {
+      setError(err.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+
+    <div>
+      {/* Right Side: Login Form */}
+      <div className="flex items-center justify-center h-screen">
+        <div ref={formRef} className="w-full max-w-md space-y-8  px-6 py-10 rounded-xl shadow-lg bg-white border-red-500">
+          <div className="text-center">
+            <h2 className="text-3xl font-bold">Sign In</h2>
+            {/* <p className="text-muted-foreground mt-2">Resume your trading journey</p> */}
+            <p className="text-muted-foreground mt-2">Pronab Or Tonmoy</p>
+          </div>
+
+          <form onSubmit={handleSubmit} className="space-y-6">
+            {error && (
+              <div className="p-4 bg-destructive/10 border border-destructive/20 text-destructive text-sm rounded-xl">
+                {error}
+              </div>
+            )}
+
+            <div className="space-y-5">
+              <div className="space-y-2">
+                <label className="text-sm font-medium ml-1">Email Address</label>
+                <div className="relative group">
+                  <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none group-focus-within:text-primary transition-colors">
+                    <Mail size={18} />
+                  </div>
+                  <input
+                    type="email"
+                    required
+                    placeholder="name@example.com"
+                    className="w-full pl-11 pr-4 py-3 bg-card border border-border rounded-xl focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all shadow-sm"
+                    value={formData.email}
+                    onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                  />
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <div className="flex justify-between items-center px-1">
+                  <label className="text-sm font-medium">Password</label>
+                  <Link href="/forgot" className="text-sm text-primary hover:underline font-medium">
+                    Forgot Password?
+                  </Link>
+                </div>
+                <div className="relative group">
+                  <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none group-focus-within:text-primary transition-colors">
+                    <Lock size={18} />
+                  </div>
+                  <input
+                    type="password"
+                    required
+                    placeholder="••••••••"
+                    className="w-full pl-11 pr-4 py-3 bg-card border border-border rounded-xl focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all shadow-sm"
+                    value={formData.password}
+                    onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+                  />
+                </div>
+              </div>
+            </div>
+
+            <button
+              type="submit"
+              disabled={loading}
+              className="w-full bg-primary text-primary-foreground py-3.5 rounded-xl font-semibold flex items-center justify-center gap-2 hover:bg-primary/90 transition-all shadow-lg shadow-primary/20 disabled:opacity-70 active:scale-[0.98]"
+            >
+              {loading ? (
+                <Loader2 className="w-5 h-5 animate-spin" />
+              ) : (
+                <>
+                  Sign In <LogIn size={18} />
+                </>
+              )}
+            </button>
+          </form>
+
+          <p className="text-center text-muted-foreground">
+            New here?{' '}
+            <Link href="/signup" className="text-primary font-semibold hover:underline">
+              Create Account
+            </Link>
+          </p>
+        </div>
+      </div>  </div>
+
+  );
+}
