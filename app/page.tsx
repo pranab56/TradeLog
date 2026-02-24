@@ -5,40 +5,30 @@ import ProfitLossChart from '@/components/charts/ProfitLossChart';
 import KPICard from '@/components/dashboard/KPICard';
 import MainLayout from '@/components/layout/MainLayout';
 import { Card } from '@/components/ui/card';
-import axios from 'axios';
+import { useGetAnalyticsQuery } from '@/features/trades/tradesApi';
 import {
   Activity,
   ArrowDownRight,
   ArrowUpRight,
+  Loader2,
   Percent,
-  Plus,
   Target,
   TrendingUp
 } from 'lucide-react';
 import Link from 'next/link';
-import { useEffect, useState } from 'react';
 
 export default function OverviewPage() {
-  const [data, setData] = useState<any>(null);
-  const [loading, setLoading] = useState(true);
+  const { data, isLoading, error } = useGetAnalyticsQuery(undefined);
 
-  useEffect(() => {
-    const fetchData = async () => {
-      try {
-        const res = await axios.get('/api/analytics');
-        setData(res.data);
-      } catch (error) {
-        console.error("Failed to fetch analytics", error);
-      } finally {
-        setLoading(false);
-      }
-    };
-    fetchData();
-  }, []);
-
-  if (loading) return (
+  if (isLoading) return (
     <div className="flex items-center justify-center h-[calc(100vh-120px)]">
-      <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary"></div>
+      <Loader2 className="animate-spin h-12 w-12 text-primary" />
+    </div>
+  );
+
+  if (error) return (
+    <div className="flex items-center justify-center h-[calc(100vh-120px)] text-destructive">
+      <p>Failed to load analytics records.</p>
     </div>
   );
 
@@ -50,13 +40,6 @@ export default function OverviewPage() {
             <h1 className="text-3xl font-bold tracking-tight mb-1">Trading Overview</h1>
             <p className="text-muted-foreground">Welcome back! Here's your performance summary.</p>
           </div>
-          <Link
-            href="/trades?action=add"
-            className="flex items-center space-x-2 bg-primary text-primary-foreground px-6 py-3 rounded-2xl font-medium transition-transform active:scale-95 shadow-lg shadow-primary/20"
-          >
-            <Plus className="w-5 h-5" />
-            <span>Add New Daily Log</span>
-          </Link>
         </div>
 
 
@@ -64,10 +47,11 @@ export default function OverviewPage() {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
           <KPICard
             title="Net Profit"
-            value={`$${data?.netProfit?.toLocaleString() || 0}`}
+            value={`${(data?.netProfit || 0) >= 0 ? '+' : '-'}$${Math.abs(data?.netProfit || 0).toLocaleString()}`}
             icon={TrendingUp}
-            color="primary"
+            color={(data?.netProfit || 0) >= 0 ? 'profit' : 'loss'}
           />
+
           <KPICard
             title="Win Rate"
             value={`${data?.winRate?.toFixed(1) || 0}%`}
@@ -153,11 +137,11 @@ export default function OverviewPage() {
             <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full -mr-10 -mt-10 blur-2xl" />
             <div>
               <h4 className="text-lg font-bold mb-2">Ready to trade?</h4>
-              <p className="text-primary-foreground/80 text-sm">Don't forget to journal your psychology today.</p>
+              <p className="text-primary-foreground/80 text-sm">Every record you add here influences your overall performance metrics.</p>
             </div>
-            <button className="mt-6 cursor-pointer bg-white text-primary w-full py-3 rounded-xl font-bold text-sm">
+            <Link href="/trades" className="mt-6 cursor-pointer bg-white text-primary w-full py-3 rounded-xl font-bold text-sm text-center">
               Open Trading Journal
-            </button>
+            </Link>
           </div>
         </div>
       </div>

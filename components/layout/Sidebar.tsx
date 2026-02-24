@@ -1,13 +1,18 @@
+"use client";
+
+import { useLogoutMutation } from '@/features/auth/authApi';
 import {
   BarChart3,
   FileText,
   History,
   LayoutDashboard,
+  Loader2,
+  LogOut,
   Settings,
-  TrendingUp,
+  TrendingUp
 } from 'lucide-react';
 import Link from 'next/link';
-import { usePathname } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 
 const navItems = [
   { name: 'Overview', href: '/', icon: LayoutDashboard },
@@ -19,6 +24,17 @@ const navItems = [
 
 export default function Sidebar() {
   const pathname = usePathname();
+  const router = useRouter();
+  const [logout, { isLoading }] = useLogoutMutation();
+
+  const handleLogout = async () => {
+    try {
+      await logout(undefined).unwrap();
+      router.push('/login');
+    } catch (error) {
+      console.error('Logout failed:', error);
+    }
+  };
 
   return (
     <aside className="w-64 bg-card/50 backdrop-blur-xl border-r border-border h-screen sticky top-0 flex flex-col transition-all duration-300">
@@ -47,21 +63,33 @@ export default function Sidebar() {
               `}
             >
               <Icon className={`w-5 h-5 transition-transform duration-200 group-hover:scale-110`} />
-              <span className="font-medium">{item.name}</span>
+              <span className="font-medium text-sm uppercase font-bold tracking-tight">{item.name}</span>
             </Link>
           );
         })}
       </nav>
 
-      <div className="p-6 mt-auto">
+      <div className="px-4 py-6 mt-auto space-y-4">
+        <button
+          onClick={handleLogout}
+          disabled={isLoading}
+          className="w-full flex items-center space-x-3 p-4 rounded-xl text-loss hover:bg-loss/10 transition-all duration-200 group font-bold text-sm uppercase tracking-wider cursor-pointer border border-transparent hover:border-loss/20"
+        >
+          {isLoading ? (
+            <Loader2 className="w-5 h-5 animate-spin" />
+          ) : (
+            <LogOut className="w-5 h-5 transition-transform group-hover:-translate-x-1" />
+          )}
+          <span>{isLoading ? 'Exiting...' : 'Sign Out'}</span>
+        </button>
+
         <div className="p-4 rounded-2xl bg-primary/5 border border-primary/10">
-          <p className="text-xs text-muted-foreground font-medium mb-2">PRO TIP</p>
-          <p className="text-sm leading-relaxed">
-            Consistency is key to a successful trading journey.
+          <p className="text-[10px] text-muted-foreground font-black mb-2 uppercase tracking-widest">Psychology Tip</p>
+          <p className="text-xs leading-relaxed font-medium italic opacity-80">
+            "Consistency and discipline are the pillars of every profitable trader."
           </p>
         </div>
       </div>
     </aside>
   );
 }
-

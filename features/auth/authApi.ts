@@ -51,6 +51,14 @@ export const authApi = baseApi.injectEndpoints({
       query: () => '/api/auth/me',
       providesTags: ['Auth'],
     }),
+    updateProfile: builder.mutation({
+      query: (data) => ({
+        url: '/api/auth/me',
+        method: 'PATCH',
+        body: data,
+      }),
+      invalidatesTags: ['Auth'],
+    }),
   }),
 });
 
@@ -61,6 +69,6 @@ export const {
   useForgotPasswordMutation,
   useResetPasswordMutation,
   useLogoutMutation,
-  useGetMeQuery
+  useGetMeQuery,
+  useUpdateProfileMutation
 } = authApi;
-

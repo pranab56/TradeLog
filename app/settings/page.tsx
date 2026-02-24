@@ -11,15 +11,17 @@ import {
 } from "@/components/ui/card";
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { useGetMeQuery, useUpdateProfileMutation } from '@/features/auth/authApi';
 import {
+  AlertCircle,
+  CheckCircle2,
   Clock,
-  Database,
+  Loader2,
   Monitor,
   Moon,
   Save,
   Shield,
   Sun,
-  Trash2,
   User
 } from 'lucide-react';
 import { useTheme } from 'next-themes';
@@ -28,14 +30,37 @@ import { useEffect, useState } from 'react';
 export default function SettingsPage() {
   const { theme, setTheme } = useTheme();
   const [mounted, setMounted] = useState(false);
+  const { data, isLoading } = useGetMeQuery(undefined);
+  const [updateProfile, { isLoading: isUpdating }] = useUpdateProfileMutation();
+
+  const [name, setName] = useState('');
+  const [message, setMessage] = useState<{ text: string, type: 'success' | 'error' } | null>(null);
 
   // Avoid hydration mismatch
   useEffect(() => {
     setMounted(true);
   }, []);
 
+  // Update name state when data is loaded
+  useEffect(() => {
+    if (data?.user?.name && !name) {
+      setName(data.user.name);
+    }
+  }, [data]);
+
   const handleThemeChange = (newTheme: string) => {
     setTheme(newTheme);
+  };
+
+  const handleSave = async () => {
+    try {
+      await updateProfile({ name }).unwrap();
+      setMessage({ text: 'Profile updated successfully!', type: 'success' });
+      setTimeout(() => setMessage(null), 3000);
+    } catch (err) {
+      setMessage({ text: 'Failed to update profile.', type: 'error' });
+      setTimeout(() => setMessage(null), 3000);
+    }
   };
 
   if (!mounted) return (
@@ -60,13 +85,25 @@ export default function SettingsPage() {
             <h1 className="text-3xl font-bold tracking-tight mb-1">Configuration</h1>
             <p className="text-muted-foreground flex items-center">
               <Clock className="w-4 h-4 mr-2 opacity-50" />
-              Last updated: Feb 24, 2026
+              Last updated: {new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
             </p>
           </div>
-          <Button className="rounded-xl px-8 h-12 shadow-lg cursor-pointer shadow-primary/20 font-bold">
-            <Save className="w-5 h-5 mr-2" />
-            Save All Changes
-          </Button>
+          <div className="flex items-center space-x-4">
+            {message && (
+              <div className={`flex items-center space-x-2 px-4 py-2 rounded-xl text-sm font-bold animate-in fade-in slide-in-from-right-4 ${message.type === 'success' ? 'bg-profit/10 text-profit' : 'bg-loss/10 text-loss'}`}>
+                {message.type === 'success' ? <CheckCircle2 className="w-4 h-4" /> : <AlertCircle className="w-4 h-4" />}
+                <span>{message.text}</span>
+              </div>
+            )}
+            <Button
+              onClick={handleSave}
+              disabled={isUpdating || !name}
+              className="rounded-xl px-8 h-12 shadow-lg cursor-pointer shadow-primary/20 font-bold active:scale-95 transition-transform disabled:opacity-50"
+            >
+              {isUpdating ? <Loader2 className="w-5 h-5 animate-spin mr-2" /> : <Save className="w-5 h-5 mr-2" />}
+              Save Changes
+            </Button>
+          </div>
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
@@ -79,31 +116,41 @@ export default function SettingsPage() {
                 </div>
                 <div>
                   <CardTitle className="text-xl">Profile Information</CardTitle>
-                  <CardDescription>Personal identification and capital settings.</CardDescription>
+                  <CardDescription>Personal identification.</CardDescription>
                 </div>
               </div>
             </CardHeader>
             <CardContent className="p-8 space-y-6 flex-1">
-              <div className="grid grid-cols-1 gap-6">
-                <div className="space-y-2">
-                  <Label htmlFor="trader-name" className="text-sm font-semibold text-muted-foreground">TRADER NAME</Label>
-                  <Input
-                    id="trader-name"
-                    type="text"
-                    defaultValue="Prop Trader"
-                    className="bg-accent/20 border-border h-12 rounded-xl focus-visible:ring-primary/30"
-                  />
+              {isLoading ? (
+                <div className="flex items-center justify-center py-10">
+                  <Loader2 className="w-8 h-8 animate-spin text-primary" />
                 </div>
-                <div className="space-y-2">
-                  <Label htmlFor="capital" className="text-sm font-semibold text-muted-foreground">STARTING CAPITAL ($)</Label>
-                  <Input
-                    id="capital"
-                    type="number"
-                    defaultValue="50000"
-                    className="bg-accent/20 border-border h-12 rounded-xl focus-visible:ring-primary/30"
-                  />
+              ) : (
+                <div className="grid grid-cols-1 gap-6">
+                  <div className="space-y-2">
+                    <Label htmlFor="trader-name" className="text-sm font-semibold text-muted-foreground">TRADER NAME</Label>
+                    <Input
+                      id="trader-name"
+                      type="text"
+                      value={name}
+                      onChange={(e) => setName(e.target.value)}
+                      className="bg-accent/20 border-border h-12 rounded-xl focus-visible:ring-primary/30 font-medium"
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="email" className="text-sm font-semibold text-muted-foreground">EMAIL</Label>
+                    <Input
+                      id="email"
+                      type="text"
+                      value={data?.user?.email || ''}
+                      readOnly
+                      className="bg-accent/10 border-border h-12 rounded-xl opacity-60 cursor-not-allowed font-medium"
+                    />
+                    <p className="text-[10px] text-muted-foreground font-medium uppercase tracking-wider ml-1">Email is locked to your account</p>
+                  </div>
                 </div>
-              </div>
+              )}
             </CardContent>
           </Card>
 
@@ -116,7 +163,7 @@ export default function SettingsPage() {
                 </div>
                 <div>
                   <CardTitle className="text-xl">Visual Preferences</CardTitle>
-                  <CardDescription>Customize the application theme and feel.</CardDescription>
+                  <CardDescription>Customize the application theme.</CardDescription>
                 </div>
               </div>
             </CardHeader>
@@ -153,32 +200,7 @@ export default function SettingsPage() {
             </CardContent>
           </Card>
         </div>
-
-        {/* Data Management Card */}
-        <Card className="border-red-500/20 bg-red-500/5 rounded-xl overflow-hidden shadow-lg shadow-red-500/5">
-          <div className="p-8 md:p-10 flex flex-col md:flex-row items-center justify-between gap-8">
-            <div className="flex items-start space-x-6 gap-3 text-center md:text-left">
-              <div className="p-4 rounded-2xl bg-red-500 text-white shadow-xl shadow-red-500/30 shrink-0 mx-auto md:mx-0">
-                <Database className="w-8 h-8" />
-              </div>
-              <div className="space-y-2">
-                <CardTitle className="text-2xl text-red-500 font-bold">Data Management</CardTitle>
-                <CardDescription className="text-red-500/70 max-w-md text-base">
-                  Purge all your trading logs and performance analytics. This action is irreversible and will reset your entire dashboard.
-                </CardDescription>
-              </div>
-            </div>
-            <Button
-              variant="destructive"
-              className="h-12 px-10 rounded-xl font-medium text-base shadow-xl cursor-pointer w-full md:w-auto"
-            >
-              <Trash2 className="w-6 h-6 mr-2" />
-              PURGE ALL DATA
-            </Button>
-          </div>
-        </Card>
       </div>
     </MainLayout>
   );
 }
-

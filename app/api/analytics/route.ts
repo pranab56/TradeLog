@@ -1,13 +1,22 @@
-import connectDB from '@/lib/db';
-import DailyRecord from '@/models/DailyRecord';
+import { verifyToken } from '@/lib/auth-utils';
+import { getUserDb } from '@/lib/mongodb-client';
+import { cookies } from 'next/headers';
 import { NextResponse } from 'next/server';
 
 export async function GET() {
   try {
-    await connectDB();
-    const records = await DailyRecord.find({}).sort({ date: 1 });
+    const cookieStore = await cookies();
+    const token = cookieStore.get('token')?.value;
 
-    if (records.length === 0) {
+    if (!token) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+
+    const decoded: any = verifyToken(token);
+    if (!decoded || !decoded.dbName) return NextResponse.json({ error: 'Invalid session' }, { status: 401 });
+
+    const db = await getUserDb(decoded.dbName);
+    const rawRecords = await db.collection('trades').find({}).sort({ date: 1 }).toArray();
+
+    if (rawRecords.length === 0) {
       return NextResponse.json({
         netProfit: 0,
         winRate: 0,
@@ -19,15 +28,29 @@ export async function GET() {
         winningStreak: 0,
         losingStreak: 0,
         chartData: [],
+        totalWins: 0,
+        totalLosses: 0,
+        totalTrades: 0
       });
     }
 
+    // Aggregate records by date
+    const dailyMap: Record<string, { profit: number; loss: number; count: number }> = {};
+    rawRecords.forEach(record => {
+      const dateKey = new Date(record.date).toISOString().split('T')[0];
+      if (!dailyMap[dateKey]) {
+        dailyMap[dateKey] = { profit: 0, loss: 0, count: 0 };
+      }
+      dailyMap[dateKey].profit += parseFloat(record.profit) || 0;
+      dailyMap[dateKey].loss += parseFloat(record.loss) || 0;
+      dailyMap[dateKey].count += 1;
+    });
+
+    const sortedDates = Object.keys(dailyMap).sort();
+
     let netProfit = 0;
-    let totalWinTrades = 0;
-    let totalLossTrades = 0;
-    let totalTrades = 0;
-    let profitDays = 0;
-    let lossDays = 0;
+    let totalWinDays = 0;
+    let totalLossDays = 0;
     let maxProfitDay = -Infinity;
     let minProfitDay = Infinity;
 
@@ -37,22 +60,21 @@ export async function GET() {
     let maxLossStreak = 0;
 
     let equity = 0;
-    const chartData = records.map((record) => {
-      const dayNet = record.profit - record.loss;
+    const chartData = sortedDates.map((date) => {
+      const { profit, loss, count } = dailyMap[date];
+      const dayNet = profit - loss;
+
       netProfit += dayNet;
-      totalWinTrades += record.winningTrades;
-      totalLossTrades += record.losingTrades;
-      totalTrades += record.totalTrades;
       equity += dayNet;
 
       if (dayNet > 0) {
-        profitDays++;
+        totalWinDays++;
         maxProfitDay = Math.max(maxProfitDay, dayNet);
         currentWinStreak++;
         maxLossStreak = Math.max(maxLossStreak, currentLossStreak);
         currentLossStreak = 0;
       } else if (dayNet < 0) {
-        lossDays++;
+        totalLossDays++;
         minProfitDay = Math.min(minProfitDay, dayNet);
         currentLossStreak++;
         maxWinStreak = Math.max(maxWinStreak, currentWinStreak);
@@ -60,29 +82,35 @@ export async function GET() {
       }
 
       return {
-        date: record.date.toISOString().split('T')[0],
-        profit: record.profit,
-        loss: record.loss,
+        date,
+        profit,
+        loss,
         net: dayNet,
         equity: equity,
+        totalTrades: count
       };
     });
 
     maxWinStreak = Math.max(maxWinStreak, currentWinStreak);
     maxLossStreak = Math.max(maxLossStreak, currentLossStreak);
 
-    const winRate = totalTrades > 0 ? (totalWinTrades / totalTrades) * 100 : 0;
-    const avgProfit = totalWinTrades > 0 ? (records.reduce((acc, r) => acc + r.profit, 0) / totalWinTrades) : 0;
-    const avgLoss = totalLossTrades > 0 ? (records.reduce((acc, r) => acc + r.loss, 0) / totalLossTrades) : 0;
+    const totalDays = sortedDates.length;
+    const winRate = totalDays > 0 ? (totalWinDays / totalDays) * 100 : 0;
 
-    // Simplified Drawdown calculation
+    // Average calculated per trade record, not per day
+    const totalWinsCount = rawRecords.filter(r => (parseFloat(r.profit) || 0) > 0).length;
+    const totalLossesCount = rawRecords.filter(r => (parseFloat(r.loss) || 0) > 0).length;
+    const avgProfit = totalWinsCount > 0 ? (rawRecords.reduce((acc, r) => acc + (parseFloat(r.profit) || 0), 0) / totalWinsCount) : 0;
+    const avgLoss = totalLossesCount > 0 ? (rawRecords.reduce((acc, r) => acc + (parseFloat(r.loss) || 0), 0) / totalLossesCount) : 0;
+
+    // Drawdown calculation
     let peak = -Infinity;
     let maxDrawdown = 0;
-    let currentEquity = 0;
-    records.forEach(r => {
-      currentEquity += (r.profit - r.loss);
-      if (currentEquity > peak) peak = currentEquity;
-      const drawdown = peak - currentEquity;
+    let runningEquity = 0;
+    chartData.forEach(d => {
+      runningEquity = d.equity;
+      if (runningEquity > peak) peak = runningEquity;
+      const drawdown = peak - runningEquity;
       if (drawdown > maxDrawdown) maxDrawdown = drawdown;
     });
 
@@ -97,8 +125,13 @@ export async function GET() {
       winningStreak: maxWinStreak,
       losingStreak: maxLossStreak,
       chartData,
+      totalWins: totalWinsCount,
+      totalLosses: totalLossesCount,
+      totalTrades: rawRecords.length
     });
+
   } catch (error: any) {
+    console.error('Analytics error:', error);
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 }

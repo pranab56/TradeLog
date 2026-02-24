@@ -45,8 +45,11 @@ export default function KPICard({ title, value, icon: Icon, trend, color = 'prim
 
       <div className="relative z-10">
         <p className="text-sm font-medium text-muted-foreground mb-1">{title}</p>
-        <h3 className="text-2xl font-bold tracking-tight">{value}</h3>
+        <h3 className={`text-2xl font-bold tracking-tight ${color ? `text-${color}` : ''}`}>
+          {value}
+        </h3>
       </div>
+
     </div>
   );
 }

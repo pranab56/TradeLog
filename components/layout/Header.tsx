@@ -1,15 +1,22 @@
+"use client";
+
+import { useGetMeQuery } from '@/features/auth/authApi';
 import { format } from 'date-fns';
-import { Clock, Search } from 'lucide-react';
+import { Clock, Loader2 } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { TradingCalendar } from './TradingCalendar';
 
 export default function Header() {
   const [time, setTime] = useState(new Date());
+  const { data, isLoading } = useGetMeQuery(undefined);
 
   useEffect(() => {
     const timer = setInterval(() => setTime(new Date()), 1000);
     return () => clearInterval(timer);
   }, []);
+
+  const userName = data?.user?.name || 'TRADER';
+  const initial = userName.charAt(0).toUpperCase();
 
   return (
     <header className="h-20 border-b border-border bg-card/50 backdrop-blur-xl flex items-center justify-between px-8 sticky top-0 z-50">
@@ -26,26 +33,22 @@ export default function Header() {
       </div>
 
       <div className="flex items-center space-x-6">
-        <div className="relative group hidden sm:block">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground group-focus-within:text-primary transition-colors" />
-          <input
-            type="text"
-            placeholder="Search records..."
-            className="w-64 bg-accent/50 py-2 pl-10 pr-4 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all border border-transparent focus:border-primary/20"
-          />
-        </div>
+
 
         <div className="flex items-center space-x-3 bg-accent/50 p-1.5 rounded-xl pl-3">
           <div className="flex flex-col items-end mr-1">
-            <span className="text-xs font-bold leading-none">TRADER</span>
+            {isLoading ? (
+              <Loader2 className="w-3 h-3 animate-spin text-primary" />
+            ) : (
+              <span className="text-xs font-bold leading-none uppercase truncate max-w-[100px]">{userName}</span>
+            )}
             <span className="text-[10px] text-primary font-medium tracking-wider">ACTIVE</span>
           </div>
-          <div className="w-9 h-9 bg-primary/20 rounded-lg flex items-center justify-center text-primary font-bold">
-            T
+          <div className="w-10 h-10 bg-primary/20 rounded-xl flex items-center justify-center text-primary font-black shadow-inner">
+            {isLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : initial}
           </div>
         </div>
       </div>
     </header>
   );
 }
-
