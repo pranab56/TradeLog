@@ -1,6 +1,7 @@
 import { TooltipProvider } from "@/components/ui/tooltip";
 import StoreProvider from "@/providers/StoreProvider";
 import { ThemeProvider } from "@/providers/ThemeProvider";
+import { SocketProvider } from "@/providers/socket-provider";
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
@@ -32,7 +33,9 @@ export default function RootLayout({
       >
         <ThemeProvider>
           <TooltipProvider>
-            <StoreProvider>{children}</StoreProvider>
+            <SocketProvider>
+              <StoreProvider>{children}</StoreProvider>
+            </SocketProvider>
           </TooltipProvider>
         </ThemeProvider>
       </body>

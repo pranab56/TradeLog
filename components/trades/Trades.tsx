@@ -59,7 +59,7 @@ const ITEMS_PER_PAGE = 10;
 
 export default function Trades() {
   const searchParams = useSearchParams();
-  const action = searchParams.get('action');
+  const action = searchParams?.get('action');
 
   const { data: records = [], isLoading: isFetching, refetch } = useGetTradesQuery(undefined);
   const [addTrade, { isLoading: isAdding }] = useAddTradeMutation();

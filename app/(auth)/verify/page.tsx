@@ -13,7 +13,7 @@ function VerifyContent() {
 
   const router = useRouter();
   const searchParams = useSearchParams();
-  const email = searchParams.get('email');
+  const email = searchParams?.get('email');
   const cardRef = useRef(null);
   const inputRefs = useRef<(HTMLInputElement | null)[]>([]);
 

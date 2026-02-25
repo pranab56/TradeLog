@@ -3,11 +3,13 @@
 import { useLogoutMutation } from '@/features/auth/authApi';
 import {
   BarChart3,
+  Calendar,
   FileText,
   History,
   LayoutDashboard,
   Loader2,
   LogOut,
+  MessageCircle,
   Settings,
   TrendingUp
 } from 'lucide-react';
@@ -18,6 +20,8 @@ const navItems = [
   { name: 'Overview', href: '/', icon: LayoutDashboard },
   { name: 'Trades', href: '/trades', icon: History },
   { name: 'Analytics', href: '/analytics', icon: BarChart3 },
+  { name: 'Messages', href: '/messages', icon: MessageCircle },
+  { name: 'Calendar', href: '/calendar', icon: Calendar },
   { name: 'Reports', href: '/reports', icon: FileText },
   { name: 'Settings', href: '/settings', icon: Settings },
 ];
