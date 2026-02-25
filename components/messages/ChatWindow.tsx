@@ -28,6 +28,8 @@ export default function ChatWindow({ conversation, currentUser }: ChatWindowProp
   const [messages, setMessages] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [typingUser, setTypingUser] = useState<any>(null);
+  const [replyingTo, setReplyingTo] = useState<any>(null);
+  const [editingMessage, setEditingMessage] = useState<any>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
 
   const otherParticipant = !conversation.isGroup
@@ -61,10 +63,25 @@ export default function ChatWindow({ conversation, currentUser }: ChatWindowProp
         }
       });
 
+      socket.on('message-edited', (updatedMessage: any) => {
+        setMessages(prev => prev.map(m => m._id === updatedMessage._id ? updatedMessage : m));
+      });
+
+      socket.on('message-deleted', (data: any) => {
+        setMessages(prev => prev.map(m => m._id === data.messageId ? { ...m, content: 'This message was deleted', isDeleted: true } : m));
+      });
+
+      socket.on('message-reacted', (updatedMessage: any) => {
+        setMessages(prev => prev.map(m => m._id === updatedMessage._id ? updatedMessage : m));
+      });
+
       return () => {
         socket.off('receive-message');
         socket.off('user-typing');
         socket.off('user-stop-typing');
+        socket.off('message-edited');
+        socket.off('message-deleted');
+        socket.off('message-reacted');
       };
     }
   }, [conversation._id, socket]);
@@ -96,22 +113,68 @@ export default function ChatWindow({ conversation, currentUser }: ChatWindowProp
 
   const handleSendMessage = async (content: string, type: string = 'text', mediaUrl?: string) => {
     try {
+      if (editingMessage) {
+        const res = await axios.patch('/api/messages', {
+          messageId: editingMessage._id,
+          type: 'edit',
+          content
+        });
+        const updatedMessage = res.data.message;
+        setMessages(prev => prev.map(m => m._id === updatedMessage._id ? updatedMessage : m));
+        setEditingMessage(null);
+        if (socket) socket.emit('edit-message', updatedMessage);
+        return;
+      }
+
       const res = await axios.post('/api/messages', {
         conversationId: conversation._id,
         content,
         messageType: type,
-        mediaUrl
+        mediaUrl,
+        replyTo: replyingTo?._id
       });
-
+      // ... same as before
       const newMessage = res.data.message;
-      // In a real app, we might wait for socket to broadcast, but here we add locally for instant feedback
+
+      if (replyingTo) {
+        newMessage.replyTo = {
+          _id: replyingTo._id,
+          content: replyingTo.content,
+          messageType: replyingTo.messageType,
+          senderName: replyingTo.senderId.name
+        };
+      }
+
       setMessages(prev => [...prev, newMessage]);
+      setReplyingTo(null);
 
       if (socket) {
         socket.emit('send-message', newMessage);
       }
     } catch (err) {
       console.error('Send message error', err);
+    }
+  };
+
+  const handleReact = async (messageId: string, emoji: string) => {
+    try {
+      const res = await axios.patch('/api/messages', { messageId, type: 'react', emoji });
+      const updatedMessage = res.data.message;
+      setMessages(prev => prev.map(m => m._id === updatedMessage._id ? updatedMessage : m));
+      if (socket) socket.emit('react-message', updatedMessage);
+    } catch (err) {
+      console.error('React error', err);
+    }
+  };
+
+  const handleDelete = async (messageId: string) => {
+    if (!confirm('Are you sure you want to delete this message?')) return;
+    try {
+      await axios.delete(`/api/messages?messageId=${messageId}`);
+      setMessages(prev => prev.map(m => m._id === messageId ? { ...m, content: 'This message was deleted', isDeleted: true } : m));
+      if (socket) socket.emit('delete-message', { conversationId: conversation._id, messageId });
+    } catch (err) {
+      console.error('Delete error', err);
     }
   };
 
@@ -171,6 +234,10 @@ export default function ChatWindow({ conversation, currentUser }: ChatWindowProp
                   message={msg}
                   isOwn={msg.senderId._id === currentUser?.id}
                   showAvatar={index === 0 || messages[index - 1].senderId._id !== msg.senderId._id}
+                  onReply={() => setReplyingTo(msg)}
+                  onReact={(emoji) => handleReact(msg._id, emoji)}
+                  onEdit={() => setEditingMessage(msg)}
+                  onDelete={() => handleDelete(msg._id)}
                 />
               ))
             ) : (
@@ -202,6 +269,10 @@ export default function ChatWindow({ conversation, currentUser }: ChatWindowProp
         onSend={handleSendMessage}
         conversationId={conversation._id}
         currentUser={currentUser}
+        replyingTo={replyingTo}
+        onCancelReply={() => setReplyingTo(null)}
+        editingMessage={editingMessage}
+        onCancelEdit={() => setEditingMessage(null)}
       />
     </div>
   );
