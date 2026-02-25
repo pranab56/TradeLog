@@ -19,9 +19,9 @@ import { usePathname, useRouter } from 'next/navigation';
 const navItems = [
   { name: 'Overview', href: '/', icon: LayoutDashboard },
   { name: 'Trades', href: '/trades', icon: History },
+  { name: 'Calendar', href: '/calendar', icon: Calendar },
   { name: 'Analytics', href: '/analytics', icon: BarChart3 },
   { name: 'Messages', href: '/messages', icon: MessageCircle },
-  { name: 'Calendar', href: '/calendar', icon: Calendar },
   { name: 'Reports', href: '/reports', icon: FileText },
   { name: 'Settings', href: '/settings', icon: Settings },
 ];
