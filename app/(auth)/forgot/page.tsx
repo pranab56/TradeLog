@@ -111,7 +111,7 @@ export default function ForgotPasswordPage() {
 
             <Link
               href={`/reset-password?email=${encodeURIComponent(email)}`}
-              className="w-full bg-primary text-primary-foreground py-4 rounded-xl font-semibold flex items-center justify-center gap-2 hover:bg-primary/90 transition-all shadow-lg shadow-primary/20"
+              className="w-full bg-primary cursor-pointer text-primary-foreground py-4 rounded-xl font-semibold flex items-center justify-center gap-2 hover:bg-primary/90 transition-all shadow-lg shadow-primary/20"
             >
               Proceed to Reset <ArrowRight size={18} />
             </Link>

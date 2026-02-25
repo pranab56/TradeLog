@@ -156,7 +156,7 @@ export default function DailyRecordForm({ initialData, onSubmit, isLoading }: Da
       <button
         type="submit"
         disabled={isLoading}
-        className="w-full bg-primary text-primary-foreground py-4.5 cursor-pointer rounded-2xl font-bold shadow-lg shadow-primary/20 hover:shadow-primary/40 transition-all active:scale-[0.98] disabled:opacity-50 disabled:grayscale mt-2"
+        className="w-full bg-primary text-mediump text-white py-3 cursor-pointer rounded-xl font-bold shadow-lg shadow-primary/20 hover:shadow-primary/40 transition-all active:scale-[0.98] disabled:opacity-50 disabled:grayscale mt-2"
       >
         {isLoading ? (
           <div className="flex items-center justify-center gap-2">

@@ -1,10 +1,9 @@
 'use client';
 
-import { gsap } from 'gsap';
 import { ArrowLeft, Loader2, ShieldCheck } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { Suspense, useEffect, useRef, useState } from 'react';
+import { Suspense, useRef, useState } from 'react';
 
 function VerifyContent() {
   const [otp, setOtp] = useState(['', '', '', '', '', '']);
@@ -15,19 +14,9 @@ function VerifyContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const email = searchParams.get('email');
-
-  const containerRef = useRef(null);
   const cardRef = useRef(null);
   const inputRefs = useRef<(HTMLInputElement | null)[]>([]);
 
-  useEffect(() => {
-    gsap.from(cardRef.current, {
-      y: 20,
-      opacity: 0,
-      duration: 0.8,
-      ease: 'power3.out'
-    });
-  }, []);
 
   const handleChange = (index: number, value: string) => {
     if (value.length > 1) value = value[value.length - 1];
@@ -91,8 +80,7 @@ function VerifyContent() {
   }
 
   return (
-    <div ref={cardRef} className="w-full max-w-md bg-card p-8 lg:p-12 rounded-[2rem] border border-border shadow-2xl space-y-8 relative overflow-hidden">
-      <div className="absolute top-0 right-0 w-32 h-32 bg-primary/5 rounded-full -mr-16 -mt-16 blur-2xl"></div>
+    <div className="w-full max-w-md bg-card p-8 lg:p-12 rounded-[2rem] border border-border shadow-2xl space-y-8 relative overflow-hidden">
 
       <div className="text-center space-y-4">
         <div className="w-16 h-16 bg-primary/10 rounded-2xl flex items-center justify-center mx-auto mb-6">
@@ -137,7 +125,7 @@ function VerifyContent() {
         <button
           type="submit"
           disabled={loading || otp.join('').length !== 6 || success}
-          className="w-full bg-primary text-primary-foreground py-4 rounded-2xl font-semibold flex items-center justify-center gap-2 hover:bg-primary/90 transition-all shadow-lg shadow-primary/20 disabled:opacity-50 active:scale-[0.98]"
+          className="w-full bg-primary text-primary-foreground py-4 rounded-2xl font-semibold flex items-center justify-center gap-2 hover:bg-primary/90 cursor-pointer transition-all shadow-lg shadow-primary/20 disabled:opacity-50 active:scale-[0.98]"
         >
           {loading ? <Loader2 className="w-6 h-6 animate-spin" /> : 'Verify Account'}
         </button>

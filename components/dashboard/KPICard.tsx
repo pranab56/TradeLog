@@ -1,8 +1,7 @@
 "use client";
 
-import { gsap } from 'gsap';
 import { LucideIcon } from 'lucide-react';
-import { useEffect, useRef } from 'react';
+import { useRef } from 'react';
 
 interface KPICardProps {
   title: string;
@@ -18,12 +17,6 @@ interface KPICardProps {
 export default function KPICard({ title, value, icon: Icon, trend, color = 'primary' }: KPICardProps) {
   const cardRef = useRef(null);
 
-  useEffect(() => {
-    gsap.fromTo(cardRef.current,
-      { opacity: 0, y: 20 },
-      { opacity: 1, y: 0, duration: 0.6, ease: "power2.out" }
-    );
-  }, []);
 
   return (
     <div

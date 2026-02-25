@@ -9,12 +9,6 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from "@/components/ui/tooltip";
 import { useGetTradesQuery } from "@/features/trades/tradesApi";
 import { cn } from "@/lib/utils";
 import { format, parseISO } from "date-fns";
@@ -27,6 +21,8 @@ interface DailySummary {
   loss: number;
   net: number;
   count: number;
+  wins: number;
+  losses: number;
   notes: string[];
 }
 
@@ -59,11 +55,11 @@ const DayWithTooltip = memo(({
   const isLoss = net < 0;
 
   return (
-    <Tooltip>
-      <TooltipTrigger asChild>
+    <Popover>
+      <PopoverTrigger asChild>
         <button
           className={cn(
-            "h-10 w-10 p-0 font-black text-xs aria-selected:opacity-100 items-center justify-center flex rounded-xl transition-all relative border border-transparent shadow-sm",
+            "h-10 w-10 p-0 font-black text-xs aria-selected:opacity-100 items-center justify-center flex rounded-xl transition-all relative border border-transparent shadow-sm hover:bg-accent/10 focus-visible:ring-2 focus-visible:ring-primary outline-none",
             isProfit ? "bg-profit/10 text-profit hover:bg-profit/20 border-profit/20" :
               isLoss ? "bg-loss/10 text-loss hover:bg-loss/20 border-loss/20" :
                 "bg-accent/50 text-muted-foreground",
@@ -77,11 +73,11 @@ const DayWithTooltip = memo(({
             isProfit ? "bg-profit" : isLoss ? "bg-loss" : "bg-muted-foreground"
           )} />
         </button>
-      </TooltipTrigger>
-      <TooltipContent
+      </PopoverTrigger>
+      <PopoverContent
         side="top"
         sideOffset={12}
-        className="p-0 bg-transparent border-none shadow-none z-[110] pointer-events-none"
+        className="p-0 bg-transparent border-none shadow-none z-[110]"
       >
         <div className="p-6 bg-card border border-border shadow-2xl rounded-[1.5rem] min-w-[260px] backdrop-blur-xl animate-in fade-in zoom-in-95 duration-200">
           <div className="flex items-center justify-between mb-4 border-b border-border/50 pb-4">
@@ -119,13 +115,33 @@ const DayWithTooltip = memo(({
             </div>
 
             <div className="grid grid-cols-2 gap-3">
-              <div className="bg-muted p-3 rounded-xl flex flex-col items-center">
-                <span className="text-[9px] font-black text-muted-foreground uppercase opacity-70 mb-1">Trades</span>
-                <span className="text-xs font-black text-primary bg-primary/10 px-2 py-0.5 rounded-md">{summary.count}</span>
+              <div className="bg-profit/5 p-3 rounded-2xl border border-profit/10">
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-[9px] font-black text-profit/70 uppercase tracking-widest">Earnings</span>
+                  <div className="px-1.5 py-0.5 rounded bg-profit/10 text-profit text-[9px] font-black">{summary.wins}W</div>
+                </div>
+                <div className="text-xl font-black text-profit tracking-tighter">
+                  ${summary.profit.toLocaleString()}
+                </div>
               </div>
-              <div className="bg-muted p-3 rounded-xl flex flex-col items-center">
-                <span className="text-[9px] font-black text-muted-foreground uppercase opacity-70 mb-1">Status</span>
-                <span className="text-xs font-black uppercase tracking-tighter">{isProfit ? 'PROFIT' : isLoss ? 'LOSS' : 'FLAT'}</span>
+
+              <div className="bg-loss/5 p-3 rounded-2xl border border-loss/10">
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-[9px] font-black text-loss/70 uppercase tracking-widest">Drawdown</span>
+                  <div className="px-1.5 py-0.5 rounded bg-loss/10 text-loss text-[9px] font-black">{summary.losses}L</div>
+                </div>
+                <div className="text-xl font-black text-loss tracking-tighter">
+                  -${summary.loss.toLocaleString()}
+                </div>
+              </div>
+            </div>
+
+            <div className="flex items-center justify-center pt-2">
+              <div className="px-3 py-1 rounded-full bg-muted flex items-center space-x-2 border border-border/50">
+                <Target className="w-3 h-3 text-muted-foreground" />
+                <span className="text-[10px] font-black text-muted-foreground uppercase tracking-widest">
+                  {summary.count} Total Trades Today
+                </span>
               </div>
             </div>
 
@@ -149,8 +165,8 @@ const DayWithTooltip = memo(({
             )}
           </div>
         </div>
-      </TooltipContent>
-    </Tooltip>
+      </PopoverContent>
+    </Popover>
   );
 });
 
@@ -171,6 +187,8 @@ export function TradingCalendar() {
             loss: 0,
             net: 0,
             count: 0,
+            wins: 0,
+            losses: 0,
             notes: []
           };
         }
@@ -180,6 +198,8 @@ export function TradingCalendar() {
         map[dateKey].loss += l;
         map[dateKey].net += (p - l);
         map[dateKey].count += 1;
+        if (p > 0) map[dateKey].wins += 1;
+        if (l > 0) map[dateKey].losses += 1;
         if (trade.notes) map[dateKey].notes.push(trade.notes);
       });
     }
@@ -202,42 +222,40 @@ export function TradingCalendar() {
   }), [dailyDataMap]);
 
   return (
-    <TooltipProvider delayDuration={0}>
-      <Popover>
-        <PopoverTrigger asChild>
-          <Button
-            variant="outline"
-            className="h-10 px-4 rounded-xl border-border bg-accent/30 hover:bg-accent/50 transition-all flex items-center space-x-2 cursor-pointer shadow-sm active:scale-95"
-          >
-            {isLoading ? <Loader2 className="w-4 h-4 animate-spin text-primary" /> : <CalendarIcon className="w-4 h-4 text-primary" />}
-            <span className="hidden md:inline font-bold text-xs tracking-tight uppercase">Performance Calendar</span>
-            <span className="md:hidden text-xs font-bold uppercase">Calendar</span>
-          </Button>
-        </PopoverTrigger>
-        <PopoverContent className="w-auto p-0 border-border bg-card shadow-2xl rounded-2xl overflow-hidden backdrop-blur-xl" align="end" sideOffset={8}>
-          <div className="p-4 border-b border-border bg-accent/10 flex items-center justify-between">
-            <div className="flex items-center space-x-2">
-              <Zap className="w-4 h-4 text-primary animate-pulse" />
-              <span className="text-xs font-black uppercase tracking-widest opacity-70">Daily Sync</span>
+    <Popover>
+      <PopoverTrigger asChild>
+        <Button
+          variant="outline"
+          className="h-10 px-4 rounded-xl border-border bg-accent/30 hover:bg-accent/50 transition-all flex items-center space-x-2 cursor-pointer shadow-sm active:scale-95"
+        >
+          {isLoading ? <Loader2 className="w-4 h-4 animate-spin text-primary" /> : <CalendarIcon className="w-4 h-4 text-primary" />}
+          <span className="hidden md:inline font-bold text-xs tracking-tight uppercase">Performance Calendar</span>
+          <span className="md:hidden text-xs font-bold uppercase">Calendar</span>
+        </Button>
+      </PopoverTrigger>
+      <PopoverContent className="w-auto p-0 border-border bg-card shadow-2xl rounded-2xl overflow-hidden backdrop-blur-xl" align="end" sideOffset={8}>
+        <div className="p-4 border-b border-border bg-accent/10 flex items-center justify-between">
+          <div className="flex items-center space-x-2">
+            <Zap className="w-4 h-4 text-primary animate-pulse" />
+            <span className="text-xs font-black uppercase tracking-widest opacity-70">Daily Sync</span>
+          </div>
+          <div className="flex items-center space-x-3 text-[10px] font-black">
+            <div className="flex items-center space-x-1">
+              <div className="w-2 h-2 rounded-full bg-profit" />
+              <span className="text-profit">WIN</span>
             </div>
-            <div className="flex items-center space-x-3 text-[10px] font-black">
-              <div className="flex items-center space-x-1">
-                <div className="w-2 h-2 rounded-full bg-profit" />
-                <span className="text-profit">WIN</span>
-              </div>
-              <div className="flex items-center space-x-1">
-                <div className="w-2 h-2 rounded-full bg-loss" />
-                <span className="text-loss">LOSS</span>
-              </div>
+            <div className="flex items-center space-x-1">
+              <div className="w-2 h-2 rounded-full bg-loss" />
+              <span className="text-loss">LOSS</span>
             </div>
           </div>
-          <Calendar
-            mode="single"
-            className="p-3"
-            components={calendarComponents}
-          />
-        </PopoverContent>
-      </Popover>
-    </TooltipProvider>
+        </div>
+        <Calendar
+          mode="single"
+          className="p-3"
+          components={calendarComponents}
+        />
+      </PopoverContent>
+    </Popover>
   );
 }

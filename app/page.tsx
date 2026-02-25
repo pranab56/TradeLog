@@ -10,21 +10,31 @@ import {
   Activity,
   ArrowDownRight,
   ArrowUpRight,
-  Loader2,
   Percent,
   Target,
-  TrendingUp
+  Wallet
 } from 'lucide-react';
 import Link from 'next/link';
+import { useEffect, useState } from 'react';
 
 export default function OverviewPage() {
-  const { data, isLoading, error } = useGetAnalyticsQuery(undefined);
+  const [localToday, setLocalToday] = useState<string>('');
 
-  if (isLoading) return (
-    <div className="flex items-center justify-center h-[calc(100vh-120px)]">
-      <Loader2 className="animate-spin h-12 w-12 text-primary" />
-    </div>
-  );
+  useEffect(() => {
+    // Get local date in YYYY-MM-DD format
+    const now = new Date();
+    const offset = now.getTimezoneOffset();
+    const localDate = new Date(now.getTime() - (offset * 60 * 1000));
+    setLocalToday(localDate.toISOString().split('T')[0]);
+  }, []);
+
+  const { data, error } = useGetAnalyticsQuery(localToday, { skip: !localToday });
+
+  // if (isLoading || !localToday) return (
+  //   <div className="flex items-center justify-center h-[calc(100vh-120px)]">
+  //     <Loader2 className="animate-spin h-12 w-12 text-primary" />
+  //   </div>
+  // );
 
   if (error) return (
     <div className="flex items-center justify-center h-[calc(100vh-120px)] text-destructive">
@@ -38,37 +48,53 @@ export default function OverviewPage() {
         <div className="flex justify-between items-end">
           <div>
             <h1 className="text-3xl font-bold tracking-tight mb-1">Trading Overview</h1>
-            <p className="text-muted-foreground">Welcome back! Here's your performance summary.</p>
+            <p className="text-muted-foreground">Welcome back! Here's your performance summary for {localToday}.</p>
           </div>
         </div>
 
 
         {/* First Row: KPIs */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           <KPICard
-            title="Net Profit"
-            value={`${(data?.netProfit || 0) >= 0 ? '+' : '-'}$${Math.abs(data?.netProfit || 0).toLocaleString()}`}
-            icon={TrendingUp}
-            color={(data?.netProfit || 0) >= 0 ? 'profit' : 'loss'}
-          />
-
-          <KPICard
-            title="Win Rate"
-            value={`${data?.winRate?.toFixed(1) || 0}%`}
-            icon={Percent}
-            color="profit"
-          />
-          <KPICard
-            title="Avg Profit / Trade"
-            value={`$${data?.avgProfit?.toFixed(2) || 0}`}
+            title="Today's Profit"
+            value={`+$${(data?.todayProfit || 0).toLocaleString()}`}
             icon={ArrowUpRight}
             color="profit"
           />
+
           <KPICard
-            title="Avg Loss / Trade"
-            value={`$${data?.avgLoss?.toFixed(2) || 0}`}
+            title="Today's Loss"
+            value={`-$${(data?.todayLoss || 0).toLocaleString()}`}
             icon={ArrowDownRight}
             color="loss"
+          />
+
+          <KPICard
+            title="Net Daily P/L"
+            value={`${(data?.todayNet || 0) >= 0 ? '+' : '-'}$${Math.abs(data?.todayNet || 0).toLocaleString()}`}
+            icon={Activity}
+            color={(data?.todayNet || 0) >= 0 ? 'profit' : 'loss'}
+          />
+
+          <KPICard
+            title="Win Rate (Daily)"
+            value={`${data?.todayWinRate?.toFixed(1) || 0}%`}
+            icon={Percent}
+            color="profit"
+          />
+
+          <KPICard
+            title="Avg Risk-Reward (Daily)"
+            value={data?.todayAvgRR || '0:0'}
+            icon={Target}
+            color="primary"
+          />
+
+          <KPICard
+            title="Total Profit (All-Time)"
+            value={`${(data?.totalProfitAllTime || 0) >= 0 ? '+' : '-'}$${Math.abs(data?.totalProfitAllTime || 0).toLocaleString()}`}
+            icon={Wallet}
+            color={(data?.totalProfitAllTime || 0) >= 0 ? 'profit' : 'loss'}
           />
         </div>
 

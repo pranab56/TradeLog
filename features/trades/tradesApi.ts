@@ -30,7 +30,7 @@ export const tradesApi = baseApi.injectEndpoints({
       invalidatesTags: ['Trades', 'Analytics'],
     }),
     getAnalytics: builder.query({
-      query: () => '/api/analytics',
+      query: (date?: string) => `/api/analytics${date ? `?date=${date}` : ''}`,
       providesTags: ['Analytics'],
     }),
   }),
