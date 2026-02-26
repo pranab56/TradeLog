@@ -12,6 +12,7 @@ import axios from 'axios';
 import {
   AlertCircle,
   CheckCircle2,
+  Download,
   FileImage,
   FileVideo,
   Filter,
@@ -45,46 +46,52 @@ export default function GalleryPage() {
   const [search, setSearch] = useState('');
   const [uploadProgress, setUploadProgress] = useState<number | null>(null);
   const [uploading, setUploading] = useState(false);
+  const [uploadInfo, setUploadInfo] = useState<{ current: number; total: number } | null>(null);
   const [previewItem, setPreviewItem] = useState<GalleryItem | null>(null);
   const [message, setMessage] = useState<{ text: string; type: 'success' | 'error' } | null>(null);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
-    // Check size (1GB limit)
-    if (file.size > 1024 * 1024 * 1024) {
-      setMessage({ text: 'File size exceeds 1GB limit.', type: 'error' });
-      return;
-    }
-
-    const formData = new FormData();
-    formData.append('file', file);
+    const files = e.target.files;
+    if (!files || files.length === 0) return;
 
     setUploading(true);
-    setUploadProgress(0);
+    setUploadInfo({ current: 0, total: files.length });
 
-    try {
-      await axios.post('/api/gallery', formData, {
-        onUploadProgress: (progressEvent) => {
-          const percentCompleted = Math.round((progressEvent.loaded * 100) / (progressEvent.total || 1));
-          setUploadProgress(percentCompleted);
-        }
-      });
+    for (let i = 0; i < files.length; i++) {
+      const file = files[i];
+      setUploadInfo({ current: i + 1, total: files.length });
 
-      setMessage({ text: 'Uploaded successfully!', type: 'success' });
-      refetch();
-    } catch (error: any) {
-      console.error('Upload failed:', error);
-      setMessage({ text: error.response?.data?.error || 'Upload failed.', type: 'error' });
-    } finally {
-      setUploading(false);
-      setUploadProgress(null);
-      if (fileInputRef.current) fileInputRef.current.value = '';
-      setTimeout(() => setMessage(null), 3000);
+      // Check size (1GB limit)
+      if (file.size > 1024 * 1024 * 1024) {
+        setMessage({ text: `File ${file.name} exceeds 1GB limit.`, type: 'error' });
+        continue;
+      }
+
+      const formData = new FormData();
+      formData.append('file', file);
+
+      try {
+        await axios.post('/api/gallery', formData, {
+          onUploadProgress: (progressEvent) => {
+            const percentCompleted = Math.round((progressEvent.loaded * 100) / (progressEvent.total || 1));
+            setUploadProgress(percentCompleted);
+          }
+        });
+      } catch (error: any) {
+        console.error(`Upload failed for ${file.name}:`, error);
+        setMessage({ text: `Failed to upload ${file.name}`, type: 'error' });
+      }
     }
+
+    setMessage({ text: 'All files processed!', type: 'success' });
+    refetch();
+    setUploading(false);
+    setUploadProgress(null);
+    setUploadInfo(null);
+    if (fileInputRef.current) fileInputRef.current.value = '';
+    setTimeout(() => setMessage(null), 3000);
   };
 
   const handleDelete = async (id: string, e: React.MouseEvent) => {
@@ -115,6 +122,26 @@ export default function GalleryPage() {
     return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
   };
 
+  const handleDownload = async (url: string, fileName: string, e?: React.MouseEvent) => {
+    if (e) e.stopPropagation();
+    try {
+      const response = await fetch(url);
+      const blob = await response.blob();
+      const blobUrl = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = blobUrl;
+      link.download = fileName;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(blobUrl);
+    } catch (error) {
+      console.error('Download failed:', error);
+      setMessage({ text: 'Download failed.', type: 'error' });
+      setTimeout(() => setMessage(null), 3000);
+    }
+  };
+
   return (
     <MainLayout>
       <div className="space-y-8 pb-20">
@@ -141,6 +168,7 @@ export default function GalleryPage() {
                 className="hidden"
                 onChange={handleUpload}
                 accept="image/*,video/*"
+                multiple
               />
               <Button
                 onClick={() => fileInputRef.current?.click()}
@@ -152,7 +180,7 @@ export default function GalleryPage() {
                 ) : (
                   <Upload className="w-5 h-5 mr-2" />
                 )}
-                Upload Media
+                {uploading ? `Uploading ${uploadInfo?.current} of ${uploadInfo?.total}` : 'Upload Media'}
               </Button>
             </div>
           </div>
@@ -274,14 +302,24 @@ export default function GalleryPage() {
                     </p>
                     <div className="flex items-center justify-between">
                       <span className="text-white/60 font-bold text-[8px] uppercase">{formatSize(item.size)}</span>
-                      <Button
-                        variant="destructive"
-                        size="icon"
-                        onClick={(e) => handleDelete(item._id, e)}
-                        className="rounded-xl h-8 w-8 bg-loss/80 hover:bg-loss transition-all"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </Button>
+                      <div className="flex items-center space-x-2">
+                        <Button
+                          variant="secondary"
+                          size="icon"
+                          onClick={(e) => handleDownload(item.url, item.fileName, e)}
+                          className="rounded-xl h-8 w-8 bg-white/20 hover:bg-white/40 text-white transition-all border-0"
+                        >
+                          <Download className="w-4 h-4" />
+                        </Button>
+                        <Button
+                          variant="destructive"
+                          size="icon"
+                          onClick={(e) => handleDelete(item._id, e)}
+                          className="rounded-xl h-8 w-8 bg-loss/80 hover:bg-loss transition-all"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </Button>
+                      </div>
                     </div>
                   </div>
 
@@ -319,6 +357,15 @@ export default function GalleryPage() {
                 <p className="text-white/40 font-bold uppercase text-[10px] tracking-widest">
                   Type: {previewItem.mimeType} • Size: {formatSize(previewItem.size)} • Created: {new Date(previewItem.createdAt).toLocaleDateString()}
                 </p>
+                <div className="pt-4">
+                  <Button
+                    onClick={() => handleDownload(previewItem.url, previewItem.fileName)}
+                    className="rounded-2xl h-12 px-8 bg-primary text-white font-black uppercase tracking-widest active:scale-95 transition-all"
+                  >
+                    <Download className="w-5 h-5 mr-2" />
+                    Download Original
+                  </Button>
+                </div>
               </div>
             </div>
           </div>
