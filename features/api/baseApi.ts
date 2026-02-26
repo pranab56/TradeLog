@@ -5,7 +5,7 @@ export const baseApi = createApi({
   baseQuery: fetchBaseQuery({
     baseUrl: '/', // Use relative paths for Next.js API routes
   }),
-  tagTypes: ['User', 'Auth', 'Trades', 'Analytics'],
+  tagTypes: ['User', 'Auth', 'Trades', 'Analytics', 'Todos', 'Gallery'],
   endpoints: () => ({}),
 });
 

@@ -11,10 +11,16 @@ import {
 } from "recharts";
 
 interface EquityCurveChartProps {
-  data: { date: string; equity: number }[];
+  data: { date: string; equity: number; net?: number }[];
 }
 
 export default function EquityCurveChart({ data }: EquityCurveChartProps) {
+  const totalPnL = data.reduce((acc, item) => acc + (item.net || 0), 0);
+  const isPositive = totalPnL > 0;
+  const isNegative = totalPnL < 0;
+
+  const chartColor = isPositive ? "var(--profit)" : isNegative ? "var(--loss)" : "var(--muted-foreground)";
+
   return (
     <div className="h-[300px] w-full">
       <ResponsiveContainer width="100%" height="100%">
@@ -24,29 +30,31 @@ export default function EquityCurveChart({ data }: EquityCurveChartProps) {
             dataKey="date"
             axisLine={false}
             tickLine={false}
-            tick={{ fill: 'var(--muted-foreground)', fontSize: 12 }}
+            tick={{ fill: chartColor, fontSize: 10, opacity: 0.7 }}
             dy={10}
           />
           <YAxis
             axisLine={false}
             tickLine={false}
-            tick={{ fill: 'var(--muted-foreground)', fontSize: 12 }}
+            tick={{ fill: chartColor, fontSize: 10, opacity: 0.7 }}
           />
           <Tooltip
             contentStyle={{
               backgroundColor: 'var(--card)',
-              borderColor: 'var(--border)',
+              borderColor: chartColor,
               borderRadius: '12px',
-              fontSize: '12px'
+              fontSize: '12px',
+              color: chartColor
             }}
+            itemStyle={{ color: chartColor }}
           />
           <Line
             type="stepAfter"
             dataKey="equity"
-            stroke="var(--profit)"
+            stroke={chartColor}
             strokeWidth={4}
-            dot={false}
-            activeDot={{ r: 6, fill: 'var(--profit)', strokeWidth: 0 }}
+            dot={{ r: 4, fill: chartColor, strokeWidth: 0 }}
+            activeDot={{ r: 6, fill: chartColor, strokeWidth: 0 }}
           />
         </LineChart>
       </ResponsiveContainer>

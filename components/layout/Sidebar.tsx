@@ -4,8 +4,10 @@ import { useLogoutMutation } from '@/features/auth/authApi';
 import {
   BarChart3,
   Calendar,
+  CheckSquare,
   FileText,
   History,
+  Image,
   LayoutDashboard,
   Loader2,
   LogOut,
@@ -22,6 +24,8 @@ const navItems = [
   { name: 'Calendar', href: '/calendar', icon: Calendar },
   { name: 'Analytics', href: '/analytics', icon: BarChart3 },
   { name: 'Messages', href: '/messages', icon: MessageCircle },
+  { name: 'Todos', href: '/todos', icon: CheckSquare },
+  { name: 'Gallery', href: '/gallery', icon: Image },
   { name: 'Reports', href: '/reports', icon: FileText },
   { name: 'Settings', href: '/settings', icon: Settings },
 ];
