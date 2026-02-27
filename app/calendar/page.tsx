@@ -95,7 +95,7 @@ const DayButton = memo(({
     return (
       <button
         className={cn(
-          "h-full w-full p-2 font-medium text-xs text-center flex flex-col items-center justify-start hover:bg-accent/50 rounded-xl transition-all border border-transparent min-h-[80px]",
+          "h-full w-full p-1 sm:p-2 font-medium text-xs text-center flex flex-col items-center justify-start hover:bg-accent/50 rounded-lg sm:rounded-xl transition-all border border-transparent min-h-[50px] sm:min-h-[80px]",
           className
         )}
         {...props}
@@ -115,7 +115,7 @@ const DayButton = memo(({
       <PopoverTrigger asChild>
         <button
           className={cn(
-            "h-full w-full p-2 font-black text-xs flex flex-col items-center justify-between rounded-xl transition-all relative border shadow-sm hover:scale-[1.02] active:scale-95 outline-none min-h-[80px]",
+            "h-full w-full p-1 sm:p-2 font-black text-xs flex flex-col items-center justify-between rounded-lg sm:rounded-xl transition-all relative border shadow-sm hover:scale-[1.02] active:scale-95 outline-none min-h-[50px] sm:min-h-[80px]",
             isProfit ? "bg-profit/10 text-profit border-profit/20 hover:bg-profit/20" :
               isLoss ? "bg-loss/10 text-loss border-loss/20 hover:bg-loss/20" :
                 "bg-accent/50 text-muted-foreground border-border",
@@ -125,19 +125,19 @@ const DayButton = memo(({
         >
           <div className="flex justify-between w-full items-start">
             <div className={cn(
-              "p-1 rounded-md mb-2",
+              "p-0.5 sm:p-1 rounded-md mb-1 sm:mb-2",
               isProfit ? "bg-profit text-white" : isLoss ? "bg-loss text-white" : "bg-muted"
             )}>
-              {isProfit ? <TrendingUp className="w-3 h-3" /> : isLoss ? <TrendingDown className="w-3 h-3" /> : <Zap className="w-3 h-3" />}
+              {isProfit ? <TrendingUp className="w-2.5 h-2.5 sm:w-3 h-3" /> : isLoss ? <TrendingDown className="w-2.5 h-2.5 sm:w-3 h-3" /> : <Zap className="w-2.5 h-2.5 sm:w-3 h-3" />}
             </div>
-            <span className="opacity-60">{day.date.getDate()}</span>
+            <span className="opacity-60 text-[8px] sm:text-xs">{day.date.getDate()}</span>
           </div>
 
-          <div className="flex flex-col items-center w-full">
-            <span className="text-[10px] font-bold tracking-tight">
+          <div className="flex flex-col items-center w-full mt-auto">
+            <span className="text-[8px] md:text-[10px] font-black tracking-tighter truncate w-full">
               {net >= 0 ? "+" : ""}${Math.abs(net).toLocaleString()}
             </span>
-            <div className="flex space-x-0.5 mt-1">
+            <div className="hidden sm:flex space-x-0.5 mt-1">
               {Array.from({ length: Math.min(summary.count, 3) }).map((_, i) => (
                 <div key={i} className={cn("w-1 h-1 rounded-full", isProfit ? "bg-profit" : isLoss ? "bg-loss" : "bg-muted-foreground")} />
               ))}
@@ -155,7 +155,7 @@ const DayButton = memo(({
           )}
         </button>
       </PopoverTrigger>
-      <PopoverContent side="right" className="p-0 border-none bg-transparent shadow-none w-80 z-50">
+      <PopoverContent side="bottom" align="center" className="p-0 border-none bg-transparent shadow-none w-[calc(100vw-32px)] sm:w-80 z-50">
         <div className="bg-card border border-border shadow-2xl rounded-3xl overflow-hidden backdrop-blur-xl animate-in fade-in slide-in-from-left-4 duration-300">
           <div className={cn(
             "p-6 flex flex-col",
@@ -306,77 +306,77 @@ export default function TradingCalendarPage() {
         isLoading ? (
           <Loading />
         ) : (
-          <div className="space-y-8 pb-10">
+          <div className="space-y-6 md:space-y-8 pb-10">
             {/* Header Area */}
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
-              <div>
-                <h1 className="text-xl font-semibold mb-1">Trading Progress</h1>
-                <p className="text-sm flex items-center font-normal">
-                  <CalendarIcon className="w-4 h-4 mr-2" />
+              <div className="space-y-1">
+                <h1 className="text-xl md:text-2xl font-bold tracking-tight">Trading Progress</h1>
+                <p className="text-sm text-muted-foreground flex items-center font-normal">
+                  <CalendarIcon className="w-4 h-4 mr-2 text-primary" />
                   Visualizing your performance delta across time.
                 </p>
               </div>
 
-              <div className="flex items-center gap-3 bg-card border border-border p-2 rounded-2xl shadow-sm">
+              <div className="flex items-center gap-2 md:gap-3 bg-card border border-border p-1.5 md:p-2 rounded-2xl shadow-sm shrink-0">
                 <Button
                   variant="outline"
                   size="icon"
-                  className="rounded-xl h-10 w-10 cursor-pointer"
+                  className="rounded-xl h-9 w-9 md:h-10 md:w-10 cursor-pointer"
                   onClick={() => setCurrentMonth(prev => new Date(prev.getFullYear(), prev.getMonth() - 1, 1))}
                 >
-                  <ChevronLeft className="w-5 h-5" />
+                  <ChevronLeft className="w-4 h-4 md:w-5 md:h-5" />
                 </Button>
-                <div className="px-6 py-2 bg-primary/5 rounded-xl border border-primary/10">
-                  <span className="text-sm font-semibold text-primary">
+                <div className="px-3 md:px-6 py-1.5 md:py-2 bg-primary/5 rounded-xl border border-primary/10">
+                  <span className="text-xs md:text-sm font-bold text-primary whitespace-nowrap">
                     {format(currentMonth, "MMMM yyyy")}
                   </span>
                 </div>
                 <Button
                   variant="outline"
                   size="icon"
-                  className="rounded-xl h-10 w-10 cursor-pointer"
+                  className="rounded-xl h-9 w-9 md:h-10 md:w-10 cursor-pointer"
                   onClick={() => setCurrentMonth(prev => new Date(prev.getFullYear(), prev.getMonth() + 1, 1))}
                 >
-                  <ChevronRight className="w-5 h-5" />
+                  <ChevronRight className="w-4 h-4 md:w-5 md:h-5" />
                 </Button>
               </div>
             </div>
 
             {/* Motivation/Psychology Tip */}
-            <div className="bg-primary/5 border border-primary/10 p-6 rounded-xl relative overflow-hidden group">
-              <div className="absolute top-0 left-0 w-1 h-full bg-primary" />
-              <div className="flex items-start gap-4">
-                <div className="p-3 bg-primary/10 rounded-2xl text-primary shrink-0 transition-transform group-hover:scale-110">
-                  <Lightbulb className="w-6 h-6" />
+            <div className="bg-primary/5 border border-primary/10 p-4 md:p-6 rounded-2xl relative overflow-hidden group">
+              <div className="absolute top-0 left-0 w-1 md:w-1.5 h-full bg-primary" />
+              <div className="flex items-start gap-3 md:gap-4 relative z-10">
+                <div className="p-2.5 md:p-3 bg-primary/10 rounded-2xl text-primary shrink-0 transition-transform group-hover:scale-110">
+                  <Lightbulb className="w-5 h-5 md:w-6 md:h-6" />
                 </div>
                 <div className="space-y-1">
-                  <h4 className="text-base font-semibold text-primary/70">Psychology Tip of the Month</h4>
-                  <p className="text-lg font-black italic tracking-tight opacity-90 leading-tight">
+                  <h4 className="text-[10px] md:text-xs font-black text-primary/70 uppercase tracking-widest">Psychology Tip</h4>
+                  <p className="text-sm md:text-lg font-black italic tracking-tight opacity-90 leading-snug">
                     "{randomTip}"
                   </p>
                 </div>
               </div>
-              <Zap className="absolute right-8 top-1/2 -translate-y-1/2 w-24 h-24 text-primary/5 -rotate-12" />
+              <Zap className="absolute right-4 md:right-8 top-1/2 -translate-y-1/2 w-16 md:w-24 h-16 md:h-24 text-primary/5 -rotate-12 pointer-events-none" />
             </div>
 
-            <div className="grid grid-cols-1 xl:grid-cols-4 gap-8">
+            <div className="grid grid-cols-1 lg:grid-cols-3 xl:grid-cols-4 gap-6 md:gap-8">
               {/* Calendar Section (L) */}
-              <Card className="xl:col-span-3 border-border bg-card/30 backdrop-blur-sm rounded-xl overflow-hidden shadow-xl">
-                <div className="p-8 border-b border-border/50 flex items-center justify-between bg-accent/5">
-                  <div className="flex items-center space-x-3">
+              <Card className="lg:col-span-2 xl:col-span-3 border-border bg-card/30 backdrop-blur-sm rounded-2xl overflow-hidden shadow-xl">
+                <div className="p-4 md:p-8 border-b border-border/50 flex flex-col sm:flex-row items-center justify-between bg-accent/5 gap-4">
+                  <div className="flex items-center space-x-3 self-start sm:self-auto">
                     <div className="p-2 bg-primary rounded-xl text-white">
                       <History className="w-5 h-5" />
                     </div>
-                    <h3 className="text-xl font-semibold">Activity Blueprint</h3>
+                    <h3 className="text-lg md:text-xl font-bold tracking-tight">Activity Blueprint</h3>
                   </div>
-                  <div className="flex items-center space-x-6">
+                  <div className="flex items-center space-x-4 md:space-x-6 shrink-0 bg-background/50 p-2 md:p-0 rounded-xl md:bg-transparent border border-border md:border-none w-full sm:w-auto justify-center sm:justify-end">
                     <div className="flex items-center space-x-2">
-                      <div className="w-2.5 h-2.5 rounded-full bg-profit shadow-[0_0_8px_rgba(34,197,94,0.4)]" />
-                      <span className="text-sm font-semibold text-profit">Profit Edge</span>
+                      <div className="w-2 md:w-2.5 h-2 md:h-2.5 rounded-full bg-profit shadow-[0_0_8px_rgba(34,197,94,0.4)]" />
+                      <span className="text-xs md:text-sm font-bold text-profit">Profit Edge</span>
                     </div>
                     <div className="flex items-center space-x-2">
-                      <div className="w-2.5 h-2.5 rounded-full bg-loss shadow-[0_0_8px_rgba(239,68,68,0.4)]" />
-                      <span className="text-sm font-semibold text-loss">Drawdown</span>
+                      <div className="w-2 md:w-2.5 h-2 md:h-2.5 rounded-full bg-loss shadow-[0_0_8px_rgba(239,68,68,0.4)]" />
+                      <span className="text-xs md:text-sm font-bold text-loss">Drawdown</span>
                     </div>
                   </div>
                 </div>
@@ -393,7 +393,7 @@ export default function TradingCalendarPage() {
                     </div>
 
                     {/* Days Grid */}
-                    <div className="grid grid-cols-7 gap-2">
+                    <div className="grid grid-cols-7 gap-1 md:gap-2">
                       {(() => {
                         const monthStart = startOfMonth(currentMonth);
                         const monthEnd = endOfMonth(currentMonth);
@@ -433,8 +433,8 @@ export default function TradingCalendarPage() {
               </Card>
 
               {/* Stats & Summary (R) */}
-              <div className="xl:col-span-1 space-y-8">
-                <Card className="border-border bg-card/50 rounded-xl overflow-hidden shadow-lg border-2 border-primary/10 p-0">
+              <div className="lg:col-span-1 xl:col-span-1 space-y-6 md:space-y-8">
+                <Card className="border-border bg-card/50 rounded-2xl overflow-hidden shadow-lg border border-primary/10 p-0">
                   <div className="p-6 border-b border-border/50 bg-primary/5">
                     <h4 className="text-sm font-bold text-primary flex items-center">
                       <Activity className="w-4 h-4 mr-2" />

@@ -1,6 +1,6 @@
 'use client';
 
-import { Loader2, Lock, LogIn, Mail } from 'lucide-react';
+import { Eye, EyeOff, Loader2, Lock, LogIn, Mail } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useRef, useState } from 'react';
@@ -8,6 +8,7 @@ import { useRef, useState } from 'react';
 export default function LoginPage() {
   const [formData, setFormData] = useState({ email: '', password: '' });
   const [loading, setLoading] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
   const router = useRouter();
   const formRef = useRef(null);
@@ -48,8 +49,8 @@ export default function LoginPage() {
 
     <div>
       {/* Right Side: Login Form */}
-      <div className="flex items-center justify-center h-screen">
-        <div ref={formRef} className="w-full max-w-md space-y-8  px-6 py-10 rounded-xl shadow-lg bg-white border-red-500">
+      <div className="flex items-center justify-center min-h-screen bg-background p-4">
+        <div ref={formRef} className="w-full max-w-md space-y-8 px-6 py-10 rounded-xl shadow-lg bg-card border border-border">
           <div className="text-center">
             <h2 className="text-3xl font-bold">Sign In</h2>
             {/* <p className="text-muted-foreground mt-2">Resume your trading journey</p> */}
@@ -93,13 +94,20 @@ export default function LoginPage() {
                     <Lock size={18} />
                   </div>
                   <input
-                    type="password"
+                    type={showPassword ? "text" : "password"}
                     required
                     placeholder="••••••••"
-                    className="w-full pl-11 pr-4 py-3 bg-card border border-border rounded-xl focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all shadow-sm"
+                    className="w-full pl-11 pr-12 py-3 bg-card border border-border rounded-xl focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all shadow-sm"
                     value={formData.password}
                     onChange={(e) => setFormData({ ...formData, password: e.target.value })}
                   />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="absolute inset-y-0 right-0 pr-3.5 flex items-center text-muted-foreground hover:text-primary transition-colors cursor-pointer"
+                  >
+                    {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                  </button>
                 </div>
               </div>
             </div>

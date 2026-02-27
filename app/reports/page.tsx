@@ -75,13 +75,13 @@ export default function ReportsPage() {
           <p className="text-sm font-normal">Extract your isolated trading intelligence for external synthesis.</p>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-          <div className="bg-card border border-border p-10 rounded-xl flex flex-col items-center text-center shadow-sm hover:shadow-primary/5 transition-all">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 md:gap-8">
+          <div className="bg-card border border-border p-6 md:p-10 rounded-xl flex flex-col items-center text-center shadow-sm hover:shadow-primary/5 transition-all">
             <div className="w-24 h-24 bg-primary/10 rounded-xl flex items-center justify-center text-primary mb-8 animate-pulse">
               <FileSpreadsheet className="w-12 h-12" />
             </div>
             <h3 className="text-2xl font-semibold mb-3">Legacy CSV Export</h3>
-            <p className="text-muted-foreground mb-10 text-sm max-w-[280px] font-medium leading-relaxed">
+            <p className="text-muted-foreground mb-6 md:mb-10 text-sm max-w-[280px] font-medium leading-relaxed">
               Generate a raw data blueprint of {range === 'all' ? 'every single record' : `records from ${range}`} in your isolated database.
             </p>
             <Button
@@ -97,12 +97,12 @@ export default function ReportsPage() {
             )}
           </div>
 
-          <div className="bg-card border border-border p-10 rounded-xl flex flex-col items-center text-center opacity-40 grayscale">
+          <div className="bg-card border border-border p-6 md:p-10 rounded-xl flex flex-col items-center text-center opacity-40 grayscale">
             <div className="w-24 h-24 bg-muted rounded-xl flex items-center justify-center text-muted-foreground mb-8">
               <FileText className="w-12 h-12" />
             </div>
             <h3 className="text-2xl font-medium mb-3">Enterprise PDF</h3>
-            <p className="text-muted-foreground mb-10 text-sm max-w-[280px] font-medium leading-relaxed">
+            <p className="text-muted-foreground mb-6 md:mb-10 text-sm max-w-[280px] font-medium leading-relaxed">
               Create a visualized performance audit for investors or personal reviews.
             </p>
             <Button disabled className="w-full py-5 rounded-2xl font-semibold tracking-widest bg-muted text-muted-foreground cursor-not-allowed h-auto">
@@ -111,14 +111,14 @@ export default function ReportsPage() {
           </div>
         </div>
 
-        <div className="bg-primary/5 border border-primary/10 p-10 rounded-xl shadow-xl">
-          <div className="flex items-center space-x-4 mb-8">
+        <div className="bg-primary/5 border border-primary/10 p-6 md:p-10 rounded-xl shadow-xl">
+          <div className="flex items-center space-x-4 mb-6 md:mb-8">
             <div className="p-2 bg-primary rounded-lg text-white">
               <SettingsIcon className="w-6 h-6" />
             </div>
             <h4 className="font-semibold text-xl">Factory Filters</h4>
           </div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 md:gap-8">
             <div className="space-y-3">
               <label className="text-[10px] font-semibold ml-1">Temporal Range</label>
               <Select value={range} onValueChange={setRange}>

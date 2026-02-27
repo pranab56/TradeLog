@@ -47,19 +47,19 @@ export default function GalleryItem({ item, onPreview, onDelete, onDownload, for
           </div>
         )}
 
-        {/* Overlay Info */}
-        <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 p-6 flex flex-col justify-end">
+        {/* Overlay Info - Always visible or enhanced for mobile */}
+        <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent opacity-100 md:opacity-0 group-hover:opacity-100 transition-opacity duration-300 p-4 md:p-6 flex flex-col justify-end">
           <p className="text-white font-black uppercase text-[10px] tracking-widest truncate mb-1">
             {item.fileName}
           </p>
           <div className="flex items-center justify-between">
-            <span className="text-white/60 font-bold text-[8px] uppercase">{formatSize(item.size)}</span>
+            <span className="text-white/60 font-black text-[8px] uppercase tracking-tighter">{formatSize(item.size)}</span>
             <div className="flex items-center space-x-2">
               <Button
                 variant="secondary"
                 size="icon"
                 onClick={(e) => onDownload(item.url, item.fileName, e)}
-                className="rounded-xl h-8 w-8 bg-white/20 hover:bg-white/40 text-white transition-all border-0"
+                className="rounded-xl h-9 w-9 md:h-8 md:w-8 bg-white/20 hover:bg-white/40 text-white transition-all border-0 cursor-pointer"
               >
                 <Download className="w-4 h-4" />
               </Button>
@@ -67,7 +67,7 @@ export default function GalleryItem({ item, onPreview, onDelete, onDownload, for
                 variant="destructive"
                 size="icon"
                 onClick={(e) => onDelete(item._id, e)}
-                className="rounded-xl h-8 w-8 bg-loss/80 hover:bg-loss transition-all"
+                className="rounded-xl h-9 w-9 md:h-8 md:w-8 bg-loss/80 hover:bg-loss transition-all cursor-pointer"
               >
                 <Trash2 className="w-4 h-4" />
               </Button>
@@ -76,8 +76,8 @@ export default function GalleryItem({ item, onPreview, onDelete, onDownload, for
         </div>
 
         {/* Icon Badge */}
-        <div className="absolute top-4 left-4 p-2 rounded-xl bg-background/60 backdrop-blur-md border border-white/10 group-hover:bg-primary group-hover:text-white transition-all">
-          {item.type === 'image' ? <ImageIcon className="w-4 h-4" /> : <VideoIcon className="w-4 h-4" />}
+        <div className="absolute top-3 left-3 md:top-4 md:left-4 p-1.5 md:p-2 rounded-xl bg-background/60 backdrop-blur-md border border-white/10 group-hover:bg-primary group-hover:text-white transition-all">
+          {item.type === 'image' ? <ImageIcon className="w-3.5 h-3.5 md:w-4 md:h-4" /> : <VideoIcon className="w-3.5 h-3.5 md:w-4 md:h-4" />}
         </div>
       </div>
     </div>

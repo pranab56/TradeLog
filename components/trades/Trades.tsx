@@ -154,37 +154,37 @@ export default function Trades() {
     <MainLayout>
       <div className="space-y-8 pb-10">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-          <div className="flex items-center gap-4">
-            <div className="p-3 bg-primary/10 text-primary rounded-2xl hidden md:block">
+          <div className="flex flex-col sm:flex-row sm:items-center gap-4">
+            <div className="p-3 bg-primary/10 text-primary rounded-2xl hidden md:block shrink-0">
               <FileSpreadsheet size={20} />
             </div>
             <div>
-              <h1 className="text-xl font-medium tracking-tight mb-1">Trade Journal</h1>
-              <p className="text-sm font-normal">Every entry here dynamically recalculates your dashboard statistics.</p>
+              <h1 className="text-xl md:text-2xl font-bold tracking-tight mb-1">Trade Journal</h1>
+              <p className="text-sm text-muted-foreground">Every entry here dynamically recalculates your dashboard statistics.</p>
             </div>
           </div>
           <Button
             onClick={() => { setEditingRecord(null); setIsModalOpen(true); }}
-            className="rounded-xl px-10 py-3 h-auto font-semibold tracking-wider  cursor-pointer bg-primary"
+            className="rounded-xl px-6 md:px-10 py-3 h-auto font-semibold tracking-wider cursor-pointer bg-primary w-full md:w-auto"
           >
             <Plus className="w-5 h-5" />
-            Add Single Entry
+            Add Entry
           </Button>
         </div>
 
         <div className="bg-card border border-border rounded-2xl overflow-hidden shadow-sm">
-          <div className="p-6 border-b border-border flex flex-col sm:flex-row items-center justify-between gap-4 bg-muted/20">
-            <div className="relative w-full sm:w-96">
+          <div className="p-4 md:p-6 border-b border-border flex flex-col lg:flex-row items-center justify-between gap-4 bg-muted/20">
+            <div className="relative w-full lg:max-w-md">
               <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground z-10" />
               <Input
                 type="text"
-                placeholder="Search (e.g., 26 or 26-02-2026)..."
+                placeholder="Search date, notes, or tags..."
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 className="pl-12 bg-background border-border rounded-xl h-11 focus:ring-0 focus:outline-none font-normal"
               />
             </div>
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 shrink-0 self-end lg:self-auto">
               <span className="text-[10px] font-black text-muted-foreground uppercase tracking-[0.2em] px-3 py-1.5 bg-muted rounded-lg border border-border">
                 {filteredRecords.length} LOGS TOTAL
               </span>
@@ -194,12 +194,12 @@ export default function Trades() {
           <div className="relative overflow-x-auto">
             <Table>
               <TableHeader>
-                <TableRow className="bg-muted/30 hover:bg-muted/30 border-border">
-                  <TableHead className="px-8 py-5 font-semibold text- h-auto text-base">Temporal Key</TableHead>
-                  <TableHead className="px-6 py-5 font-semibold text-foreground text-right h-auto text-base">Net Surplus</TableHead>
-                  <TableHead className="px-6 py-5 font-semibold text-foreground text-center h-auto text-base">Efficiency (R:R)</TableHead>
-                  <TableHead className="px-6 py-5 font-semibold text-foreground h-auto text-base">Contextual Data</TableHead>
-                  <TableHead className="px-6 py-5 font-semibold text-foreground text-right h-auto text-base">Actions</TableHead>
+                <TableRow className="bg-muted/30 hover:bg-muted/30 border-border whitespace-nowrap">
+                  <TableHead className="px-4 md:px-8 py-5 font-semibold text-foreground h-auto text-sm md:text-base">Temporal Key</TableHead>
+                  <TableHead className="px-4 md:px-6 py-5 font-semibold text-foreground text-right h-auto text-sm md:text-base">Net Surplus</TableHead>
+                  <TableHead className="px-4 md:px-6 py-5 font-semibold text-foreground text-center h-auto text-sm md:text-base">Efficiency (R:R)</TableHead>
+                  <TableHead className="px-4 md:px-6 py-5 font-semibold text-foreground h-auto text-sm md:text-base">Contextual Data</TableHead>
+                  <TableHead className="px-4 md:px-6 py-5 font-semibold text-foreground text-right h-auto text-sm md:text-base">Actions</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -233,25 +233,25 @@ export default function Trades() {
 
                   return (
                     <TableRow key={record._id} className="hover:bg-accent/5 border-border group transition-colors">
-                      <TableCell className="px-8">
-                        <div className="font-normal text-sm">{format(new Date(record.date), 'MMM dd, yyyy')}</div>
-                        <div className="text-[10px] text-muted-foreground mt-1.5 flex items-center gap-2 font-black uppercase tracking-tighter opacity-60">
+                      <TableCell className="px-4 md:px-8">
+                        <div className="font-bold md:font-normal text-xs md:text-sm whitespace-nowrap">{format(new Date(record.date), 'MMM dd, yyyy')}</div>
+                        <div className="text-[9px] md:text-[10px] text-muted-foreground mt-1 md:mt-1.5 flex items-center gap-2 font-black uppercase tracking-tighter opacity-70">
                           <div className="w-1 h-1 rounded-full bg-primary" />
                           {record.totalTrades > 0 ? `${record.totalTrades} Trade(s)` : 'Single Record'}
                         </div>
                       </TableCell>
-                      <TableCell className={`px-6 py-6 text-right font-black text-lg ${isProfit ? 'text-profit' : 'text-loss'}`}>
-                        <div className="flex items-center justify-end space-x-2">
-                          {isProfit ? <TrendingUp size={20} className="stroke-[3]" /> : <TrendingDown size={20} className="stroke-[3]" />}
-                          <span className="italic">{isProfit ? '+' : '-'}${Math.abs(net).toLocaleString()}</span>
+                      <TableCell className={`px-4 md:px-6 py-4 md:py-6 text-right font-black text-base md:text-lg ${isProfit ? 'text-profit' : 'text-loss'}`}>
+                        <div className="flex items-center justify-end space-x-1 md:space-x-2">
+                          {isProfit ? <TrendingUp size={16} className="md:w-5 md:h-5 stroke-[3]" /> : <TrendingDown size={16} className="md:w-5 md:h-5 stroke-[3]" />}
+                          <span className="italic whitespace-nowrap">{isProfit ? '+' : '-'}${Math.abs(net).toLocaleString()}</span>
                         </div>
-                        <div className="text-[9px] uppercase font-black tracking-widest opacity-40 mt-1">
+                        <div className="text-[8px] md:text-[9px] uppercase font-black tracking-widest opacity-40 mt-1">
                           {record.profit > 0 ? `IN: $${record.profit}` : `OUT: $${record.loss}`}
                         </div>
                       </TableCell>
-                      <TableCell className="px-6 py-6 text-center">
+                      <TableCell className="px-4 md:px-6 py-4 md:py-6 text-center">
                         <span className={cn(
-                          "px-5 py-1.5 rounded-full text-xs font-black border uppercase tracking-tighter transition-all",
+                          "px-3 md:px-5 py-1 md:py-1.5 rounded-full text-[10px] md:text-xs font-black border uppercase tracking-tighter transition-all whitespace-nowrap",
                           isZeroRR
                             ? "bg-loss/10 text-loss border-loss/30 animate-pulse shadow-sm shadow-loss/10"
                             : "bg-primary/5 text-primary border-primary/20 shadow-sm shadow-primary/5"
@@ -259,44 +259,46 @@ export default function Trades() {
                           {record.riskRewardRatio}
                         </span>
                       </TableCell>
-                      <TableCell className="px-6 py-6">
-                        <div className="max-w-[280px] mb-3">
-                          <p className="text-sm line-clamp-2 text-foreground font-normal leading-relaxed italic opacity-80">"{record.notes || 'No contextual notes recorded.'}"</p>
+                      <TableCell className="px-4 md:px-6 py-4 md:py-6">
+                        <div className="min-w-[150px] md:max-w-[280px] mb-2 md:mb-3">
+                          <p className="text-xs md:text-sm line-clamp-2 text-foreground font-normal leading-relaxed italic opacity-80">"{record.notes || 'No contextual notes.'}"</p>
                         </div>
-                        <div className="flex flex-wrap gap-1.5">
-                          {record.tags?.map((tag: string) => (
-                            <span key={tag} className="bg-muted/50 text-muted-foreground text-[9px] font-black px-2.5 py-1 rounded-lg border border-border uppercase tracking-widest">
+                        <div className="flex flex-wrap gap-1">
+                          {record.tags?.slice(0, 3).map((tag: string) => (
+                            <span key={tag} className="bg-muted/50 text-muted-foreground text-[8px] md:text-[9px] font-black px-2 py-0.5 md:px-2.5 md:py-1 rounded-lg border border-border uppercase tracking-widest whitespace-nowrap">
                               {tag}
                             </span>
                           ))}
+                          {record.tags?.length > 3 && (
+                            <span className="text-[8px] font-bold text-muted-foreground">+{record.tags.length - 3}</span>
+                          )}
                         </div>
                       </TableCell>
-                      <TableCell className="px-6 py-6 text-right">
-                        <div className="flex items-center justify-end space-x-2">
+                      <TableCell className="px-4 md:px-6 py-4 md:py-6 text-right">
+                        <div className="flex items-center justify-end space-x-1 md:space-x-2">
                           <Button
                             variant="ghost"
                             size="icon"
                             onClick={() => setViewRecord(record)}
-                            className="h-10 w-10 hover:bg-primary/20 cursor-pointer text-primary rounded-xl transition-all"
+                            className="h-8 w-8 md:h-10 md:w-10 hover:bg-primary/20 cursor-pointer text-primary rounded-xl transition-all"
                           >
-                            <Eye className="w-4.5 h-4.5" />
+                            <Eye className="w-4 h-4 md:w-4.5 md:h-4.5" />
                           </Button>
-
                           <Button
                             variant="ghost"
                             size="icon"
                             onClick={() => { setEditingRecord(record); setIsModalOpen(true); }}
-                            className="h-10 w-10 hover:bg-primary/20 cursor-pointer text-primary rounded-xl transition-all"
+                            className="h-8 w-8 md:h-10 md:w-10 hover:bg-primary/20 cursor-pointer text-primary rounded-xl transition-all"
                           >
-                            <Edit2 className="w-4.5 h-4.5" />
+                            <Edit2 className="w-4 h-4 md:w-4.5 md:h-4.5" />
                           </Button>
                           <Button
                             variant="ghost"
                             size="icon"
                             onClick={() => setDeleteConfirmId(record._id)}
-                            className="h-10 w-10 hover:bg-loss/20 cursor-pointer text-loss rounded-xl transition-all"
+                            className="h-8 w-8 md:h-10 md:w-10 hover:bg-loss/20 cursor-pointer text-loss rounded-xl transition-all"
                           >
-                            <Trash2 className="w-4.5 h-4.5" />
+                            <Trash2 className="w-4 h-4 md:w-4.5 md:h-4.5" />
                           </Button>
                         </div>
                       </TableCell>
@@ -359,17 +361,16 @@ export default function Trades() {
         setIsModalOpen(open);
         if (!open) setEditingRecord(null);
       }}>
-        <DialogContent className="w-full max-w-2xl bg-card border-border rounded-xl p-0 overflow-hidden shadow-2xl outline-none">
-          <DialogHeader className="p-3 border-b border-border text-left relative overflow-hidden bg-primary/5">
-            <div className="" />
-            <DialogTitle className="text-xl font-medium ">
-              {editingRecord ? 'Edit Trade' : 'Add Trade'}
+        <DialogContent className="w-[95%] sm:max-w-2xl bg-card border-border rounded-2xl p-0 overflow-hidden shadow-2xl outline-none focus:ring-0">
+          <DialogHeader className="p-4 md:p-6 border-b border-border text-left relative overflow-hidden bg-primary/5">
+            <DialogTitle className="text-lg md:text-xl font-bold tracking-tight">
+              {editingRecord ? 'Edit Trade' : 'Add Trade Record'}
             </DialogTitle>
-            <DialogDescription className="text-sm font-normal">
-              Synchronization with isolated database in progress.
+            <DialogDescription className="text-xs md:text-sm font-medium text-muted-foreground opacity-80">
+              Database synchronization in progress.
             </DialogDescription>
           </DialogHeader>
-          <div className="p-4 overflow-y-auto scrollbar-none">
+          <div className="p-4 md:p-6 max-h-[80vh] overflow-y-auto custom-scrollbar">
             <DailyRecordForm
               initialData={editingRecord}
               onSubmit={handleFormSubmit}
@@ -384,34 +385,36 @@ export default function Trades() {
         open={!!deleteConfirmId}
         onOpenChange={(open) => !open && setDeleteConfirmId(null)}
       >
-        <AlertDialogPortal >
-          <AlertDialogOverlay />
-          <AlertDialogContent size="sm" className="outline-none flex flex-col items-center">
+        <AlertDialogPortal>
+          <AlertDialogOverlay className="backdrop-blur-sm bg-black/40" />
+          <AlertDialogContent className="w-[90%] max-w-sm rounded-2xl p-6 outline-none flex flex-col items-center border-border shadow-2xl">
 
-            <AlertDialogHeader className="flex flex-col items-center text-center w-full">
+            <AlertDialogHeader className="flex flex-col items-center text-center w-full space-y-4">
               {/* ICON */}
-              <div className="w-20 h-20 bg-loss/10 rounded-full flex items-center justify-center text-loss shadow-inner animate-pulse mb-2">
-                <Trash2 size={32} />
+              <div className="w-16 h-16 md:w-20 md:h-20 bg-loss/10 rounded-full flex items-center justify-center text-loss shadow-inner animate-pulse">
+                <Trash2 size={28} className="md:w-8 md:h-8" />
               </div>
 
               {/* TEXT */}
-              <div className="space-y-2">
-                <AlertDialogTitle className="text-xl font-semibold">
+              <div className="space-y-1.5">
+                <AlertDialogTitle className="text-lg md:text-xl font-bold">
                   Delete Record?
                 </AlertDialogTitle>
-
+                <p className="text-xs md:text-sm text-muted-foreground font-medium">
+                  This action is permanent and will affect your dashboard stats.
+                </p>
               </div>
             </AlertDialogHeader>
 
-            <AlertDialogFooter className="mt-8 flex flex-col sm:flex-row items-center justify-center gap-3 w-full sm:justify-center">
-              <AlertDialogCancel className="w-full sm:w-auto rounded-xl font-black uppercase tracking-widest px-8 py-3 h-auto hover:text-red-500 cursor-pointer border-border hover:bg-muted transition-all text-[10px] m-0">
+            <AlertDialogFooter className="mt-6 flex flex-col sm:flex-row items-center justify-center gap-3 w-full">
+              <AlertDialogCancel className="w-full sm:w-auto rounded-xl font-bold uppercase tracking-widest px-6 py-2.5 h-auto cursor-pointer border-border hover:bg-accent transition-all text-[10px] m-0 order-2 sm:order-1">
                 Cancel
               </AlertDialogCancel>
               <AlertDialogAction
                 onClick={handleDelete}
-                className="w-full sm:w-auto bg-red-500 hover:bg-red-600 text-white cursor-pointer rounded-xl font-black uppercase tracking-widest px-8 py-3 h-auto shadow-xl shadow-loss/20 transition-all active:scale-[0.98] text-[10px] m-0"
+                className="w-full sm:w-auto bg-loss hover:bg-loss/90 text-white cursor-pointer rounded-xl font-bold uppercase tracking-widest px-6 py-2.5 h-auto shadow-lg shadow-loss/20 transition-all active:scale-[0.98] text-[10px] m-0 order-1 sm:order-2"
               >
-                Confirm Purge
+                Confirm Delete
               </AlertDialogAction>
             </AlertDialogFooter>
           </AlertDialogContent>
@@ -420,41 +423,41 @@ export default function Trades() {
 
       {/* View Details Modal */}
       <Dialog open={!!viewRecord} onOpenChange={(open) => !open && setViewRecord(null)}>
-        <DialogContent className="w-full max-w-2xl bg-card border-border rounded-xl p-0 overflow-hidden shadow-2xl outline-none">
+        <DialogContent className="w-[95%] sm:max-w-2xl bg-card border-border rounded-2xl p-0 overflow-hidden shadow-2xl outline-none focus:ring-0">
           {viewRecord && (
             <>
-              <DialogHeader className="p-4 border-b border-border text-left relative overflow-hidden bg-primary/5">
+              <DialogHeader className="p-4 md:p-6 border-b border-border text-left relative overflow-hidden bg-primary/5">
                 <div className="absolute top-0 right-0 w-32 h-32 bg-primary/20 rounded-full -mr-16 -mt-16 blur-3xl opacity-50" />
                 <div className="flex justify-between items-start relative z-10">
                   <div>
-                    <DialogTitle className="text-xl font-semibold">
+                    <DialogTitle className="text-lg md:text-xl font-bold tracking-tight">
                       Trade Analysis
                     </DialogTitle>
-                    <DialogDescription className="text-muted-foreground font-normal mt-2 text-xs">
-                      Detailed execution snapshot • {format(new Date(viewRecord.date), 'MMMM dd, yyyy')}
+                    <DialogDescription className="text-muted-foreground font-medium mt-2 text-[10px] md:text-xs uppercase tracking-wider">
+                      Snapshot • {format(new Date(viewRecord.date), 'MMMM dd, yyyy')}
                     </DialogDescription>
                   </div>
                 </div>
               </DialogHeader>
 
-              <div className="p-8 md:p-5 space-y-8 overflow-y-auto max-h-[75vh] scrollbar-none">
-                <div className="grid grid-cols-2 md:grid-cols-3 gap-6">
-                  <div className="space-y-1 shadow border border-gray-100 rounded-sm p-3">
+              <div className="p-4 md:p-6 space-y-6 md:space-y-8 overflow-y-auto max-h-[80vh] custom-scrollbar">
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 md:gap-6">
+                  <div className="space-y-1.5 p-4 rounded-xl border border-border bg-accent/10">
                     <p className="text-[10px] font-black text-muted-foreground uppercase tracking-widest">Net Surplus</p>
-                    <p className={cn("text-base font-semibold", viewRecord.profit > 0 ? "text-profit" : "text-loss")}>
-                      {viewRecord.profit > 0 ? '+' : '-'}${Math.abs(viewRecord.profit - viewRecord.loss).toLocaleString()}
+                    <p className={cn("text-lg font-black", (viewRecord.profit - viewRecord.loss) >= 0 ? "text-profit" : "text-loss")}>
+                      {(viewRecord.profit - viewRecord.loss) >= 0 ? '+' : '-'}${Math.abs(viewRecord.profit - viewRecord.loss).toLocaleString()}
                     </p>
                   </div>
-                  <div className="space-y-1 shadow border border-gray-100 rounded-sm p-3">
-                    <p className="text-[10px] font-black text-muted-foreground uppercase tracking-widest">Risk Multiplier</p>
+                  <div className="space-y-1.5 p-4 rounded-xl border border-border bg-accent/10">
+                    <p className="text-[10px] font-black text-muted-foreground uppercase tracking-widest">Efficiency</p>
                     <div className="flex items-center gap-2">
                       <Target className="w-4 h-4 text-primary" />
-                      <p className="text-base font-semibold">{viewRecord.riskRewardRatio}</p>
+                      <p className="text-lg font-black">{viewRecord.riskRewardRatio}</p>
                     </div>
                   </div>
-                  <div className="space-y-1 shadow border border-gray-100 rounded-sm p-3">
-                    <p className="text-[10px] font-black text-muted-foreground uppercase tracking-widest">Execution Type</p>
-                    <p className="text-sm font-semibold">{viewRecord.totalTrades > 0 ? `${viewRecord.totalTrades} Logs` : 'Single'}</p>
+                  <div className="space-y-1.5 p-4 rounded-xl border border-border bg-accent/10">
+                    <p className="text-[10px] font-black text-muted-foreground uppercase tracking-widest">Execution</p>
+                    <p className="text-sm font-bold uppercase">{viewRecord.totalTrades > 0 ? `${viewRecord.totalTrades} Logs` : 'Single'}</p>
                   </div>
                 </div>
 

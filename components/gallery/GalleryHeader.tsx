@@ -26,16 +26,16 @@ export default function GalleryHeader({
         <Maximize2 className="w-48 h-48 text-primary" />
       </div>
 
-      <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-8">
-        <div className="space-y-2">
-          <h1 className="text-xl font-semibold text-primary">Media Vault</h1>
-          <p className="text-sm font-normal flex items-center  text-xs">
-            <Play className="w-4 h-4 mr-2 text-primary" />
+      <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-6 md:gap-8">
+        <div className="space-y-1">
+          <h1 className="text-xl md:text-2xl font-bold tracking-tight text-primary">Media Vault</h1>
+          <p className="text-muted-foreground font-medium flex items-center text-[10px] md:text-xs">
+            <Play className="w-3.5 h-3.5 mr-2 text-primary opacity-70" />
             Capture your evolution. Store your legacy.
           </p>
         </div>
 
-        <div className="flex items-center space-x-4">
+        <div className="flex items-center w-full md:w-auto">
           <input
             type="file"
             ref={fileInputRef}
@@ -47,14 +47,14 @@ export default function GalleryHeader({
           <Button
             onClick={onUploadClick}
             disabled={uploading}
-            className="rounded-xl h-12 px-8 shadow-xl cursor-pointer shadow-primary/20 font-black uppercase tracking-widest active:scale-95 transition-all text-white"
+            className="w-full md:w-auto rounded-xl h-11 md:h-12 px-6 md:px-8 shadow-xl cursor-pointer shadow-primary/20 font-black uppercase tracking-widest active:scale-95 transition-all text-white text-[10px] md:text-xs bg-primary hover:bg-primary/90"
           >
             {uploading ? (
-              <Loader2 className="w-5 h-5 animate-spin mr-2" />
+              <Loader2 className="w-4 h-4 md:w-5 md:h-5 animate-spin mr-2" />
             ) : (
-              <Upload className="w-5 h-5 mr-2" />
+              <Upload className="w-4 h-4 md:w-5 md:h-5 mr-2" />
             )}
-            {uploading ? `Uploading ${uploadInfo?.current} of ${uploadInfo?.total}` : 'Upload Media'}
+            {uploading ? `Processing ${uploadInfo?.current}/${uploadInfo?.total}` : 'Upload Media'}
           </Button>
         </div>
       </div>

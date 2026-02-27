@@ -28,9 +28,9 @@ export default function EquityCurveChart({ data }: EquityCurveChartProps) {
   if (!mounted) return <div className="h-[300px] w-full" />;
 
   return (
-    <div className="h-[300px] w-full">
+    <div className="h-[250px] md:h-[300px] w-full">
       <ResponsiveContainer width="100%" height="100%">
-        <LineChart data={data} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
+        <LineChart data={data} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
           <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="var(--border)" />
           <XAxis
             dataKey="date"

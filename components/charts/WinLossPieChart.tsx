@@ -27,7 +27,7 @@ export default function WinLossPieChart({ wins, losses }: WinLossPieChartProps) 
   if (!mounted) return <div className="h-[300px] w-full" />;
 
   return (
-    <div className="h-[300px] w-full">
+    <div className="h-[250px] md:h-[300px] w-full">
       <ResponsiveContainer width="100%" height="100%">
         <PieChart>
           <Pie

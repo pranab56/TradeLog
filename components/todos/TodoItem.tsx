@@ -17,16 +17,16 @@ export default function TodoItem({ todo, onToggle, onDelete, isToggling, isDelet
   return (
     <div
       className={cn(
-        "group relative overflow-hidden transition-all duration-300 rounded-xl border",
+        "group relative overflow-hidden transition-all duration-300 rounded-2xl border",
         todo.completed
           ? "bg-accent/5 border-transparent opacity-60 line-through scale-[0.98]"
-          : "bg-card border-border hover:border-primary/30 shadow-sm hover:shadow-xl hover:-translate-y-1",
+          : "bg-card border-border hover:border-primary/30 shadow-sm hover:shadow-xl md:hover:-translate-y-1",
         (isToggling || isDeleting) && "opacity-50 pointer-events-none"
       )}
     >
-      <div className="p-4 flex items-center justify-between">
+      <div className="p-3 md:p-4 flex items-center justify-between gap-3">
         <div
-          className="flex items-center space-x-5 flex-1 cursor-pointer"
+          className="flex items-center space-x-3 md:space-x-5 flex-1 cursor-pointer"
           onClick={() => !todo.completed && !isToggling && onToggle(todo._id, todo.completed)}
         >
           <button
@@ -36,27 +36,30 @@ export default function TodoItem({ todo, onToggle, onDelete, isToggling, isDelet
             }}
             disabled={isToggling}
             className={cn(
-              "w-8 h-8 rounded-full cursor-pointer flex items-center justify-center transition-all border pointer-events-auto",
+              "w-8 h-8 md:w-10 md:h-10 rounded-full cursor-pointer flex items-center justify-center transition-all border pointer-events-auto shrink-0",
               todo.completed
                 ? "bg-primary border-primary text-white shadow-lg shadow-primary/20"
-                : "border-border hover:border-primary"
+                : "border-border hover:border-primary bg-background/50"
             )}
           >
             {isToggling ? (
-              <Loader2 className="w-4 h-4 animate-spin" />
+              <Loader2 className="w-4 h-4 md:w-5 md:h-5 animate-spin" />
             ) : todo.completed ? (
-              <CheckCircle2 className="w-5 h-5" />
+              <CheckCircle2 className="w-4 h-4 md:w-5 md:h-5" />
             ) : (
-              <Circle className="w-5 h-5 text-transparent" />
+              <Circle className="w-4 h-4 md:w-5 md:h-5 text-transparent" />
             )}
           </button>
-          <span className={cn("text-lg font-medium transition-all", !todo.completed && "text-foreground")}>
+          <span className={cn(
+            "text-base md:text-lg font-bold transition-all truncate max-w-[50vw] sm:max-w-none",
+            !todo.completed ? "text-foreground" : "text-muted-foreground/60"
+          )}>
             {todo.task}
           </span>
         </div>
 
         {!todo.completed ? (
-          <div className="flex items-center space-x-2">
+          <div className="flex items-center space-x-2 shrink-0">
             <Button
               variant="ghost"
               size="icon"
@@ -65,9 +68,9 @@ export default function TodoItem({ todo, onToggle, onDelete, isToggling, isDelet
                 e.stopPropagation();
                 onDelete(todo._id);
               }}
-              className="rounded-xl cursor-pointer h-10 w-10 text-muted-foreground hover:text-loss hover:bg-loss/10 opacity-0 group-hover:opacity-100 transition-all pointer-events-auto"
+              className="rounded-xl cursor-pointer h-9 w-9 md:h-10 md:w-10 text-muted-foreground hover:text-loss hover:bg-loss/10 opacity-100 md:opacity-0 group-hover:opacity-100 transition-all pointer-events-auto border border-border md:border-none"
             >
-              {isDeleting ? <Loader2 className="w-5 h-5 animate-spin" /> : <Trash2 className="w-5 h-5" />}
+              {isDeleting ? <Loader2 className="w-4 h-4 md:w-5 md:h-5 animate-spin" /> : <Trash2 className="w-4 h-4 md:w-5 md:h-5" />}
             </Button>
           </div>
         ) : (

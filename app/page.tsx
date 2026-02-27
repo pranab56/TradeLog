@@ -77,11 +77,11 @@ export default function OverviewPage() {
           <Loading />
         </div>
       ) : (
-        <div className="space-y-8 pb-10">
-          <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-4">
-            <div>
-              <h1 className="text-xl font-semibold mb-1">Trading Performance</h1>
-              <p className="text-sm">Comprehensive analysis of your capital and growth strategies.</p>
+        <div className="space-y-6 md:space-y-8 pb-10">
+          <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-6">
+            <div className="space-y-1">
+              <h1 className="text-2xl font-bold tracking-tight">Trading Performance</h1>
+              <p className="text-sm text-muted-foreground max-w-md">Comprehensive analysis of your capital and growth strategies.</p>
             </div>
             <div className="flex items-center gap-3 bg-card border border-border px-4 py-2 rounded-2xl">
               <Wallet className="w-5 h-5 text-primary" />
@@ -94,7 +94,7 @@ export default function OverviewPage() {
 
           {/* Global Capital Curve */}
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            <Card className="lg:col-span-2 border-border bg-card/50 backdrop-blur-sm rounded-3xl p-8">
+            <Card className="lg:col-span-2 border-border bg-card/50 backdrop-blur-sm rounded-3xl p-5 md:p-8">
               <div className="flex items-center justify-between mb-8">
                 <div className="flex items-center space-x-3">
                   <div className="p-2 rounded-xl bg-primary/10 text-primary">
@@ -105,19 +105,19 @@ export default function OverviewPage() {
                     <p className="text-xs text-muted-foreground">Cumulative growth for selected period</p>
                   </div>
                 </div>
-                <div className="text-right">
-                  <p className="text-xs font-bold text-muted-foreground uppercase tracking-widest">Growth</p>
-                  <p className={`text-xl font-black ${(data?.capitalGrowthPercent || 0) >= 0 ? 'text-profit' : 'text-loss'}`}>
+                <div className="text-right shrink-0">
+                  <p className="text-[10px] md:text-xs font-bold text-muted-foreground uppercase tracking-widest">Growth</p>
+                  <p className={`text-lg md:text-xl font-black ${(data?.capitalGrowthPercent || 0) >= 0 ? 'text-profit' : 'text-loss'}`}>
                     {(data?.capitalGrowthPercent || 0).toFixed(2)}%
                   </p>
                 </div>
               </div>
-              <div className="h-[300px]">
+              <div className="h-[250px] md:h-[300px]">
                 <EquityCurveChart data={filteredChartData} />
               </div>
             </Card>
 
-            <div className="grid grid-cols-1 gap-6">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-1 gap-6">
               <KPICard
                 title="Current Capital"
                 value={`$${(data?.currentCapital || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}`}
@@ -130,7 +130,7 @@ export default function OverviewPage() {
                 icon={Activity}
                 color={(data?.totalPnL || 0) >= 0 ? 'profit' : 'loss'}
               />
-              <Card className="bg-primary p-6 rounded-3xl text-primary-foreground shadow-xl shadow-primary/20 flex flex-col justify-between overflow-hidden relative border-none">
+              <Card className="bg-primary p-6 rounded-3xl text-primary-foreground shadow-xl shadow-primary/20 flex flex-col justify-between overflow-hidden relative border-none sm:col-span-2 lg:col-span-1">
                 <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full -mr-10 -mt-10 blur-2xl" />
                 <div>
                   <h4 className="text-lg font-semibold mb-2">Portfolio Stats</h4>
@@ -159,12 +159,12 @@ export default function OverviewPage() {
               <div className="flex items-center justify-between mb-4">
                 <h2 className="text-xl font-bold flex items-center gap-2">
                   < BarChart3 className="w-5 h-5 text-primary" />
-                  Performance Breakdown
+                  Performance
                 </h2>
-                <TabsList className="bg-card border border-border p-1 rounded-xl h-auto">
-                  <TabsTrigger value="daily" className="rounded-lg py-2 px-4 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground cursor-pointer">Daily</TabsTrigger>
-                  <TabsTrigger value="monthly" className="rounded-lg py-2 px-4 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground cursor-pointer">Monthly</TabsTrigger>
-                  <TabsTrigger value="yearly" className="rounded-lg py-2 px-4 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground cursor-pointer">Yearly</TabsTrigger>
+                <TabsList className="bg-card border border-border p-1 rounded-xl h-auto flex-wrap sm:flex-nowrap">
+                  <TabsTrigger value="daily" className="flex-1 sm:flex-none rounded-lg py-2 px-3 md:px-4 text-xs md:text-sm data-[state=active]:bg-primary data-[state=active]:text-primary-foreground cursor-pointer">Daily</TabsTrigger>
+                  <TabsTrigger value="monthly" className="flex-1 sm:flex-none rounded-lg py-2 px-3 md:px-4 text-xs md:text-sm data-[state=active]:bg-primary data-[state=active]:text-primary-foreground cursor-pointer">Monthly</TabsTrigger>
+                  <TabsTrigger value="yearly" className="flex-1 sm:flex-none rounded-lg py-2 px-3 md:px-4 text-xs md:text-sm data-[state=active]:bg-primary data-[state=active]:text-primary-foreground cursor-pointer">Yearly</TabsTrigger>
                 </TabsList>
               </div>
 
@@ -258,17 +258,17 @@ export default function OverviewPage() {
           </div>
 
           {/* Profit/Loss Chart */}
-          <Card className="border-border bg-card/50 backdrop-blur-sm rounded-3xl p-8">
+          <Card className="border-border bg-card/50 backdrop-blur-sm rounded-3xl p-5 md:p-8">
             <div className="flex items-center space-x-3 mb-8">
               <div className={`p-2 rounded-xl transition-colors ${filteredChartData.reduce((acc: number, i: any) => acc + (i.net || 0), 0) >= 0 ? 'bg-profit/10 text-profit' : 'bg-loss/10 text-loss'}`}>
                 <BarChart3 className="w-5 h-5" />
               </div>
               <div>
-                <h3 className="text-xl font-bold font-heading">Profit/Loss Distribution</h3>
-                <p className="text-xs text-muted-foreground">Realized profit and loss metrics for {activeTab}</p>
+                <h3 className="text-xl font-bold font-heading">PnL Distribution</h3>
+                <p className="text-xs text-muted-foreground">Realized metrics for {activeTab}</p>
               </div>
             </div>
-            <div className="h-[300px]">
+            <div className="h-[250px] md:h-[300px]">
               <ProfitLossChart data={filteredChartData} />
             </div>
           </Card>

@@ -13,7 +13,8 @@ import {
   LogOut,
   MessageCircle,
   Settings,
-  TrendingUp
+  TrendingUp,
+  X
 } from 'lucide-react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
@@ -30,7 +31,12 @@ const navItems = [
   { name: 'Settings', href: '/settings', icon: Settings },
 ];
 
-export default function Sidebar() {
+interface SidebarProps {
+  isOpen: boolean;
+  onClose: () => void;
+}
+
+export default function Sidebar({ isOpen, onClose }: SidebarProps) {
   const pathname = usePathname();
   const router = useRouter();
   const [logout, { isLoading }] = useLogoutMutation();
@@ -45,15 +51,26 @@ export default function Sidebar() {
   };
 
   return (
-    <aside className="w-64 bg-card/50 backdrop-blur-xl border-r border-border h-screen sticky top-0 flex flex-col transition-all duration-300">
-      <div className="p-8 flex items-center space-x-3">
-        <div className="w-10 h-10 rounded-xl bg-primary flex items-center justify-center">
-          <TrendingUp className="text-primary-foreground w-6 h-6" />
+    <aside className={`
+      fixed inset-y-0 left-0 w-72 bg-card/70 backdrop-blur-2xl border-r border-border h-screen z-[999] flex flex-col transition-transform duration-300 md:translate-x-0 md:static md:w-64
+      ${isOpen ? 'translate-x-0' : '-translate-x-full'}
+    `}>
+      <div className="p-6 md:p-8 flex items-center justify-between">
+        <div className="flex items-center space-x-3">
+          <div className="w-10 h-10 rounded-xl bg-primary flex items-center justify-center">
+            <TrendingUp className="text-primary-foreground w-6 h-6" />
+          </div>
+          <h1 className="text-xl font-bold tracking-tight">TradeLog</h1>
         </div>
-        <h1 className="text-xl font-bold tracking-tight">TradeLog</h1>
+        <button
+          onClick={onClose}
+          className="md:hidden p-2 rounded-lg hover:bg-accent text-muted-foreground transition-colors cursor-pointer"
+        >
+          <X className="w-6 h-6" />
+        </button>
       </div>
 
-      <nav className="flex-1 px-4 space-y-2 mt-4">
+      <nav className="flex-1 px-4 space-y-1.5 mt-2 md:mt-4 overflow-y-auto custom-scrollbar">
         {navItems.map((item) => {
           const isActive = pathname === item.href;
           const Icon = item.icon;
@@ -62,8 +79,11 @@ export default function Sidebar() {
             <Link
               key={item.href}
               href={item.href}
+              onClick={() => {
+                if (window.innerWidth < 768) onClose();
+              }}
               className={`
-                flex items-center space-x-3 p-3 rounded-xl transition-all duration-200 group
+                flex items-center space-x-3 p-3 rounded-xl transition-all duration-200 group relative
                 ${isActive
                   ? 'bg-primary text-primary-foreground shadow-lg shadow-primary/20'
                   : 'hover:bg-accent text-muted-foreground hover:text-foreground'
@@ -71,7 +91,10 @@ export default function Sidebar() {
               `}
             >
               <Icon className={`w-5 h-5 transition-transform duration-200 group-hover:scale-110`} />
-              <span className="font-medium text-sm uppercase font-bold tracking-tight">{item.name}</span>
+              <span className="font-bold text-xs uppercase tracking-tight">{item.name}</span>
+              {isActive && (
+                <div className="absolute right-2 w-1 h-5 bg-primary-foreground rounded-full" />
+              )}
             </Link>
           );
         })}
@@ -81,7 +104,7 @@ export default function Sidebar() {
         <button
           onClick={handleLogout}
           disabled={isLoading}
-          className="w-full flex items-center space-x-3 p-4 rounded-xl text-loss hover:bg-loss/10 transition-all duration-200 group font-bold text-sm uppercase tracking-wider cursor-pointer border border-transparent hover:border-loss/20"
+          className="w-full flex items-center space-x-3 p-4 rounded-xl text-loss hover:bg-loss/10 transition-all duration-200 group font-bold text-xs uppercase tracking-wider cursor-pointer border border-transparent hover:border-loss/20"
         >
           {isLoading ? (
             <Loader2 className="w-5 h-5 animate-spin" />
@@ -91,7 +114,7 @@ export default function Sidebar() {
           <span>{isLoading ? 'Exiting...' : 'Sign Out'}</span>
         </button>
 
-        <div className="p-4 rounded-2xl bg-primary/5 border border-primary/10">
+        <div className="p-4 rounded-2xl bg-primary/5 border border-primary/10 hidden md:block">
           <p className="text-[10px] text-muted-foreground font-black mb-2 uppercase tracking-widest">Psychology Tip</p>
           <p className="text-xs leading-relaxed font-medium italic opacity-80">
             "Consistency and discipline are the pillars of every profitable trader."

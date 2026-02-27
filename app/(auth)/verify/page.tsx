@@ -143,7 +143,7 @@ function VerifyContent() {
 
 export default function VerifyPage() {
   return (
-    <div className="min-h-screen bg-background flex items-center justify-center p-6 bg-[radial-gradient(circle_at_top_right,var(--primary-accent),transparent_30%),radial-gradient(circle_at_bottom_left,var(--primary-accent),transparent_30%)]">
+    <div className="min-h-screen bg-background flex items-center justify-center p-6 bg-[radial-gradient(circle_at_top_right,var(--accent),transparent_30%),radial-gradient(circle_at_bottom_left,var(--accent),transparent_30%)]">
       <Suspense fallback={<Loader2 className="animate-spin" />}>
         <VerifyContent />
       </Suspense>

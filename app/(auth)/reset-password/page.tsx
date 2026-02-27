@@ -1,6 +1,6 @@
 'use client';
 
-import { ArrowLeft, Loader2, Lock } from 'lucide-react';
+import { ArrowLeft, Eye, EyeOff, Loader2, Lock } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Suspense, useRef, useState } from 'react';
@@ -8,6 +8,8 @@ import { Suspense, useRef, useState } from 'react';
 function ResetPasswordContent() {
   const [formData, setFormData] = useState({ otp: '', newPassword: '', confirmPassword: '' });
   const [loading, setLoading] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState(false);
 
@@ -64,7 +66,7 @@ function ResetPasswordContent() {
   }
 
   return (
-    <div className="w-full max-w-lg p-8  rounded-xl shadow-xl border border-gray-200 space-y-8 relative overflow-hidden">
+    <div className="w-full max-w-lg p-8 rounded-xl shadow-xl bg-card border border-border space-y-8 relative overflow-hidden">
 
       <div className="text-center space-y-3">
         <h2 className="text-3xl font-medium tracking-tight">Setup New Password</h2>
@@ -107,13 +109,20 @@ function ResetPasswordContent() {
                 <Lock size={18} />
               </div>
               <input
-                type="password"
+                type={showPassword ? "text" : "password"}
                 required
                 placeholder="••••••••"
-                className="w-full pl-11 pr-4 py-3 bg-muted/30 border border-border rounded-xl focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all shadow-sm"
+                className="w-full pl-11 pr-12 py-3 bg-muted/30 border border-border rounded-xl focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all shadow-sm"
                 value={formData.newPassword}
                 onChange={(e) => setFormData({ ...formData, newPassword: e.target.value })}
               />
+              <button
+                type="button"
+                onClick={() => setShowPassword(!showPassword)}
+                className="absolute inset-y-0 right-0 pr-3.5 flex items-center text-muted-foreground hover:text-primary transition-colors cursor-pointer"
+              >
+                {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+              </button>
             </div>
           </div>
 
@@ -124,13 +133,20 @@ function ResetPasswordContent() {
                 <Lock size={18} />
               </div>
               <input
-                type="password"
+                type={showConfirmPassword ? "text" : "password"}
                 required
                 placeholder="••••••••"
-                className="w-full pl-11 pr-4 py-3 bg-muted/30 border border-border rounded-xl focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all shadow-sm"
+                className="w-full pl-11 pr-12 py-3 bg-muted/30 border border-border rounded-xl focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all shadow-sm"
                 value={formData.confirmPassword}
                 onChange={(e) => setFormData({ ...formData, confirmPassword: e.target.value })}
               />
+              <button
+                type="button"
+                onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                className="absolute inset-y-0 right-0 pr-3.5 flex items-center text-muted-foreground hover:text-primary transition-colors cursor-pointer"
+              >
+                {showConfirmPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+              </button>
             </div>
           </div>
         </div>
@@ -155,7 +171,7 @@ function ResetPasswordContent() {
 
 export default function ResetPasswordPage() {
   return (
-    <div className="min-h-screen bg-background flex items-center justify-center p-6 bg-[radial-gradient(ellipse_at_center,var(--primary-accent),transparent_50%)]">
+    <div className="min-h-screen bg-background flex items-center justify-center p-6 bg-[radial-gradient(ellipse_at_center,var(--accent),transparent_50%)]">
       <Suspense fallback={<Loader2 className="animate-spin" />}>
         <ResetPasswordContent />
       </Suspense>

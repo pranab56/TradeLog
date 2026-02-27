@@ -50,10 +50,10 @@ export default function ForgotPasswordPage() {
   };
 
   return (
-    <div className='flex items-center justify-center h-screen'>
+    <div className='flex items-center justify-center min-h-screen bg-background p-4'>
 
 
-      <div className="w-full max-w-lg bg-card p-10 lg:p-12 rounded-xl shadow-2xl space-y-8 relative z-10">
+      <div className="w-full max-w-lg bg-card p-10 lg:p-12 rounded-xl shadow-2xl border border-border space-y-8 relative z-10">
         <div className="space-y-4 text-center">
 
           <h2 className="text-3xl font-medium tracking-tight">Forgot Password?</h2>
