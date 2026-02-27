@@ -48,11 +48,11 @@ export default function SignupPage() {
   return (
     <div>
       {/* Right Side: Signup Form */}
-      <div className="flex items-center justify-center min-h-screen bg-background p-4">
-        <div ref={formRef} className="w-full max-w-lg space-y-8 px-6 py-10 rounded-xl shadow-lg bg-card border border-border">
+      <div className="flex items-center justify-center min-h-screen bg-background p-4 md:p-6">
+        <div ref={formRef} className="w-full max-w-lg space-y-6 md:space-y-8 px-6 md:px-8 py-8 md:py-10 rounded-xl shadow-lg bg-card border border-border">
           <div className="text-center">
-            <h2 className="text-3xl font-bold">Create Account</h2>
-            <p className="text-muted-foreground mt-2">Pronab Or Tonmoy</p>
+            <h2 className="text-2xl md:text-3xl font-bold">Create Account</h2>
+            <p className="text-muted-foreground mt-2 text-sm md:text-base">Pronab Or Tonmoy</p>
           </div>
 
           <form onSubmit={handleSubmit} className="space-y-6">

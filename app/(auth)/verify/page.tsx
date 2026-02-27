@@ -80,14 +80,14 @@ function VerifyContent() {
   }
 
   return (
-    <div className="w-full max-w-md bg-card p-8 lg:p-12 rounded-[2rem] border border-border shadow-2xl space-y-8 relative overflow-hidden">
+    <div className="w-full max-w-md bg-card p-6 md:p-8 lg:p-12 rounded-[2rem] border border-border shadow-2xl space-y-6 md:space-y-8 relative overflow-hidden">
 
-      <div className="text-center space-y-4">
-        <div className="w-16 h-16 bg-primary/10 rounded-2xl flex items-center justify-center mx-auto mb-6">
-          <ShieldCheck className="text-primary w-10 h-10" />
+      <div className="text-center space-y-3 md:space-y-4">
+        <div className="w-14 h-14 md:w-16 md:h-16 bg-primary/10 rounded-2xl flex items-center justify-center mx-auto mb-4 md:mb-6">
+          <ShieldCheck className="text-primary w-8 h-8 md:w-10 md:h-10" />
         </div>
-        <h2 className="text-3xl font-bold tracking-tight">Verify Email</h2>
-        <p className="text-muted-foreground">
+        <h2 className="text-2xl md:text-3xl font-bold tracking-tight">Verify Email</h2>
+        <p className="text-sm md:text-base text-muted-foreground">
           We sent a 6-digit code to <br />
           <span className="text-foreground font-semibold">{email}</span>
         </p>
@@ -143,7 +143,7 @@ function VerifyContent() {
 
 export default function VerifyPage() {
   return (
-    <div className="min-h-screen bg-background flex items-center justify-center p-6 bg-[radial-gradient(circle_at_top_right,var(--accent),transparent_30%),radial-gradient(circle_at_bottom_left,var(--accent),transparent_30%)]">
+    <div className="min-h-screen bg-background flex items-center justify-center p-4 md:p-6 bg-[radial-gradient(circle_at_top_right,var(--accent),transparent_30%),radial-gradient(circle_at_bottom_left,var(--accent),transparent_30%)]">
       <Suspense fallback={<Loader2 className="animate-spin" />}>
         <VerifyContent />
       </Suspense>

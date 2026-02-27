@@ -66,10 +66,10 @@ function ResetPasswordContent() {
   }
 
   return (
-    <div className="w-full max-w-lg p-8 rounded-xl shadow-xl bg-card border border-border space-y-8 relative overflow-hidden">
+    <div className="w-full max-w-lg p-6 md:p-8 rounded-xl shadow-xl bg-card border border-border space-y-6 md:space-y-8 relative overflow-hidden">
 
-      <div className="text-center space-y-3">
-        <h2 className="text-3xl font-medium tracking-tight">Setup New Password</h2>
+      <div className="text-center space-y-2 md:space-y-3">
+        <h2 className="text-2xl md:text-3xl font-medium tracking-tight">Setup New Password</h2>
         <p className="text-muted-foreground">
           Enter the OTP sent to <span className="text-foreground font-semibold">{email}</span> and your new password.
         </p>
@@ -171,7 +171,7 @@ function ResetPasswordContent() {
 
 export default function ResetPasswordPage() {
   return (
-    <div className="min-h-screen bg-background flex items-center justify-center p-6 bg-[radial-gradient(ellipse_at_center,var(--accent),transparent_50%)]">
+    <div className="min-h-screen bg-background flex items-center justify-center p-4 md:p-6 bg-[radial-gradient(ellipse_at_center,var(--accent),transparent_50%)]">
       <Suspense fallback={<Loader2 className="animate-spin" />}>
         <ResetPasswordContent />
       </Suspense>

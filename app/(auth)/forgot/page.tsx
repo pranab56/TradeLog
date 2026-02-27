@@ -50,14 +50,14 @@ export default function ForgotPasswordPage() {
   };
 
   return (
-    <div className='flex items-center justify-center min-h-screen bg-background p-4'>
+    <div className='flex items-center justify-center min-h-screen bg-background p-4 md:p-6'>
 
 
-      <div className="w-full max-w-lg bg-card p-10 lg:p-12 rounded-xl shadow-2xl border border-border space-y-8 relative z-10">
-        <div className="space-y-4 text-center">
+      <div className="w-full max-w-lg bg-card p-6 md:p-10 lg:p-12 rounded-xl shadow-2xl border border-border space-y-6 md:space-y-8 relative z-10">
+        <div className="space-y-3 md:space-y-4 text-center">
 
-          <h2 className="text-3xl font-medium tracking-tight">Forgot Password?</h2>
-          <p className="text-muted-foreground">
+          <h2 className="text-2xl md:text-3xl font-medium tracking-tight">Forgot Password?</h2>
+          <p className="text-sm md:text-base text-muted-foreground">
             Enter your email and we'll send you an OTP to reset your password securely.
           </p>
         </div>
