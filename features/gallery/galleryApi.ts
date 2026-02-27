@@ -1,5 +1,15 @@
 import { baseApi } from '../api/baseApi';
 
+export interface GalleryItem {
+  _id: string;
+  url: string;
+  type: 'image' | 'video';
+  fileName: string;
+  mimeType: string;
+  size: number;
+  createdAt: string;
+}
+
 export const galleryApi = baseApi.injectEndpoints({
   endpoints: (builder) => ({
     getGallery: builder.query({

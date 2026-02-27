@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import {
   Bar,
   BarChart,
@@ -15,11 +16,16 @@ interface TradeCountBarChartProps {
 }
 
 export default function TradeCountBarChart({ data }: TradeCountBarChartProps) {
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => setMounted(true), []);
+
   const totalPnL = data.reduce((acc, item) => acc + (item.net || 0), 0);
   const isPositive = totalPnL > 0;
   const isNegative = totalPnL < 0;
 
   const chartColor = isPositive ? "var(--profit)" : isNegative ? "var(--loss)" : "var(--muted-foreground)";
+
+  if (!mounted) return <div className="h-[400px] w-full" />;
 
   return (
     <div className="h-[400px] w-full">

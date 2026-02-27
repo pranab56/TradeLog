@@ -1,5 +1,12 @@
 import { baseApi } from '../api/baseApi';
 
+export interface Todo {
+  _id: string;
+  task: string;
+  completed: boolean;
+  createdAt: string;
+}
+
 export const todosApi = baseApi.injectEndpoints({
   endpoints: (builder) => ({
     getTodos: builder.query({

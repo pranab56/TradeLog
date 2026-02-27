@@ -1,56 +1,43 @@
 "use client";
 
+import GalleryFilter from '@/components/gallery/GalleryFilter';
+import GalleryHeader from '@/components/gallery/GalleryHeader';
+import GalleryItem from '@/components/gallery/GalleryItem';
+import GalleryLightbox from '@/components/gallery/GalleryLightbox';
 import MainLayout from '@/components/layout/MainLayout';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import {
+  GalleryItem as GalleryItemType,
   useDeleteFromGalleryMutation,
-  useGetGalleryQuery
+  useGetGalleryQuery,
+  useUploadToGalleryMutation
 } from '@/features/gallery/galleryApi';
 import { cn } from '@/lib/utils';
-import axios from 'axios';
 import {
   AlertCircle,
   CheckCircle2,
-  Download,
-  FileImage,
-  FileVideo,
-  Filter,
-  Image as ImageIcon,
-  Loader2,
-  Maximize2,
-  Play,
-  Search,
-  Trash2,
-  Upload,
-  Video as VideoIcon,
-  X
+  Image as ImageIcon
 } from 'lucide-react';
-import { useRef, useState } from 'react';
-
-interface GalleryItem {
-  _id: string;
-  url: string;
-  type: 'image' | 'video';
-  fileName: string;
-  mimeType: string;
-  size: number;
-  createdAt: string;
-}
+import { useCallback, useMemo, useRef, useState } from 'react';
+import Loading from '../../components/Loading/Loading';
 
 export default function GalleryPage() {
   const { data: items = [], isLoading, refetch } = useGetGalleryQuery(undefined);
   const [deleteItem] = useDeleteFromGalleryMutation();
+  const [uploadToGallery] = useUploadToGalleryMutation();
 
   const [filter, setFilter] = useState<'all' | 'image' | 'video'>('all');
   const [search, setSearch] = useState('');
-  const [uploadProgress, setUploadProgress] = useState<number | null>(null);
   const [uploading, setUploading] = useState(false);
   const [uploadInfo, setUploadInfo] = useState<{ current: number; total: number } | null>(null);
-  const [previewItem, setPreviewItem] = useState<GalleryItem | null>(null);
+  const [previewItem, setPreviewItem] = useState<GalleryItemType | null>(null);
   const [message, setMessage] = useState<{ text: string; type: 'success' | 'error' } | null>(null);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const showMessage = useCallback((text: string, type: 'success' | 'error') => {
+    setMessage({ text, type });
+    setTimeout(() => setMessage(null), 3000);
+  }, []);
 
   const handleUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
@@ -65,7 +52,7 @@ export default function GalleryPage() {
 
       // Check size (1GB limit)
       if (file.size > 1024 * 1024 * 1024) {
-        setMessage({ text: `File ${file.name} exceeds 1GB limit.`, type: 'error' });
+        showMessage(`File ${file.name} exceeds 1GB limit.`, 'error');
         continue;
       }
 
@@ -73,25 +60,18 @@ export default function GalleryPage() {
       formData.append('file', file);
 
       try {
-        await axios.post('/api/gallery', formData, {
-          onUploadProgress: (progressEvent) => {
-            const percentCompleted = Math.round((progressEvent.loaded * 100) / (progressEvent.total || 1));
-            setUploadProgress(percentCompleted);
-          }
-        });
+        await uploadToGallery(formData).unwrap();
       } catch (error: any) {
         console.error(`Upload failed for ${file.name}:`, error);
-        setMessage({ text: `Failed to upload ${file.name}`, type: 'error' });
+        showMessage(`Failed to upload ${file.name}`, 'error');
       }
     }
 
-    setMessage({ text: 'All files processed!', type: 'success' });
-    refetch();
+    await refetch();
+    showMessage('All files processed!', 'success');
     setUploading(false);
-    setUploadProgress(null);
     setUploadInfo(null);
     if (fileInputRef.current) fileInputRef.current.value = '';
-    setTimeout(() => setMessage(null), 3000);
   };
 
   const handleDelete = async (id: string, e: React.MouseEvent) => {
@@ -100,27 +80,27 @@ export default function GalleryPage() {
 
     try {
       await deleteItem(id).unwrap();
-      setMessage({ text: 'Deleted successfully.', type: 'success' });
+      showMessage('Deleted successfully.', 'success');
     } catch (error: any) {
-      setMessage({ text: 'Failed to delete.', type: 'error' });
-    } finally {
-      setTimeout(() => setMessage(null), 3000);
+      showMessage('Failed to delete.', 'error');
     }
   };
 
-  const filteredItems = items.filter((item: GalleryItem) => {
-    const matchesFilter = filter === 'all' || item.type === filter;
-    const matchesSearch = item.fileName.toLowerCase().includes(search.toLowerCase());
-    return matchesFilter && matchesSearch;
-  });
+  const filteredItems = useMemo(() => {
+    return items.filter((item: GalleryItemType) => {
+      const matchesFilter = filter === 'all' || item.type === filter;
+      const matchesSearch = item.fileName.toLowerCase().includes(search.toLowerCase());
+      return matchesFilter && matchesSearch;
+    });
+  }, [items, filter, search]);
 
-  const formatSize = (bytes: number) => {
+  const formatSize = useCallback((bytes: number) => {
     if (bytes === 0) return '0 Bytes';
     const k = 1024;
     const sizes = ['Bytes', 'KB', 'MB', 'GB'];
     const i = Math.floor(Math.log(bytes) / Math.log(k));
     return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
-  };
+  }, []);
 
   const handleDownload = async (url: string, fileName: string, e?: React.MouseEvent) => {
     if (e) e.stopPropagation();
@@ -137,101 +117,29 @@ export default function GalleryPage() {
       window.URL.revokeObjectURL(blobUrl);
     } catch (error) {
       console.error('Download failed:', error);
-      setMessage({ text: 'Download failed.', type: 'error' });
-      setTimeout(() => setMessage(null), 3000);
+      showMessage('Download failed.', 'error');
     }
   };
 
   return (
     <MainLayout>
       <div className="space-y-8 pb-20">
+        <GalleryHeader
+          uploading={uploading}
+          uploadInfo={uploadInfo}
+          uploadProgress={null} // Progress tracking removed as axios is removed
+          onUploadClick={() => fileInputRef.current?.click()}
+          fileInputRef={fileInputRef}
+          handleUpload={handleUpload}
+        />
 
-        {/* Header Visuals */}
-        <div className="relative p-8 rounded-[40px] bg-card border border-border shadow-2xl overflow-hidden group">
-          <div className="absolute top-0 right-0 p-8 opacity-5 group-hover:opacity-10 transition-opacity">
-            <Maximize2 className="w-48 h-48 text-primary" />
-          </div>
+        <GalleryFilter
+          search={search}
+          onSearchChange={setSearch}
+          filter={filter}
+          onFilterChange={setFilter}
+        />
 
-          <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-8">
-            <div className="space-y-2">
-              <h1 className="text-5xl font-black tracking-tighter uppercase italic text-primary">Media Vault</h1>
-              <p className="text-muted-foreground font-bold flex items-center uppercase text-xs tracking-[0.2em]">
-                <Play className="w-4 h-4 mr-2 text-primary" />
-                Capture your evolution. Store your legacy.
-              </p>
-            </div>
-
-            <div className="flex items-center space-x-4">
-              <input
-                type="file"
-                ref={fileInputRef}
-                className="hidden"
-                onChange={handleUpload}
-                accept="image/*,video/*"
-                multiple
-              />
-              <Button
-                onClick={() => fileInputRef.current?.click()}
-                disabled={uploading}
-                className="rounded-2xl h-14 px-8 shadow-xl shadow-primary/20 font-black uppercase tracking-widest active:scale-95 transition-all text-white"
-              >
-                {uploading ? (
-                  <Loader2 className="w-5 h-5 animate-spin mr-2" />
-                ) : (
-                  <Upload className="w-5 h-5 mr-2" />
-                )}
-                {uploading ? `Uploading ${uploadInfo?.current} of ${uploadInfo?.total}` : 'Upload Media'}
-              </Button>
-            </div>
-          </div>
-
-          {/* Upload Progress Overlay */}
-          {uploading && uploadProgress !== null && (
-            <div className="absolute bottom-0 left-0 right-0 h-1 bg-accent/20">
-              <div
-                className="h-full bg-primary transition-all duration-300"
-                style={{ width: `${uploadProgress}%` }}
-              ></div>
-            </div>
-          )}
-        </div>
-
-        {/* Action Bar */}
-        <div className="flex flex-col md:flex-row gap-4 items-center justify-between">
-          <div className="relative w-full md:w-96 group">
-            <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground group-focus-within:text-primary transition-colors" />
-            <Input
-              placeholder="Search by filename..."
-              className="pl-12 h-12 rounded-2xl bg-card/60 border-border/50 focus:border-primary/50 transition-all font-bold"
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-            />
-          </div>
-
-          <div className="flex items-center p-1 bg-accent/10 rounded-2xl border border-border/50">
-            {[
-              { id: 'all', label: 'All', icon: Filter },
-              { id: 'image', label: 'Images', icon: FileImage },
-              { id: 'video', label: 'Videos', icon: FileVideo },
-            ].map((cat) => (
-              <button
-                key={cat.id}
-                onClick={() => setFilter(cat.id as any)}
-                className={cn(
-                  "flex items-center px-6 py-2 rounded-xl text-xs font-black uppercase tracking-widest transition-all",
-                  filter === cat.id
-                    ? "bg-background text-primary shadow-lg"
-                    : "text-muted-foreground hover:text-foreground"
-                )}
-              >
-                <cat.icon className="w-4 h-4 mr-2" />
-                {cat.label}
-              </button>
-            ))}
-          </div>
-        </div>
-
-        {/* Message Toast */}
         {message && (
           <div className={cn(
             "fixed bottom-8 right-8 z-50 flex items-center space-x-3 p-4 rounded-2xl shadow-2xl animate-in slide-in-from-bottom-5",
@@ -242,12 +150,10 @@ export default function GalleryPage() {
           </div>
         )}
 
-        {/* Gallery Grid */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
           {isLoading ? (
-            <div className="col-span-full py-20 flex flex-col items-center justify-center space-y-4 opacity-20">
-              <Loader2 className="w-12 h-12 animate-spin text-primary" />
-              <p className="font-black uppercase tracking-[0.3em]">Loading Vault...</p>
+            <div className="col-span-full">
+              <Loading />
             </div>
           ) : filteredItems.length === 0 ? (
             <div className="col-span-full py-20 bg-card/40 border-4 border-dashed border-border/40 rounded-[40px] flex flex-col items-center justify-center text-center space-y-6 opacity-40">
@@ -260,117 +166,27 @@ export default function GalleryPage() {
               </div>
             </div>
           ) : (
-            filteredItems.map((item: GalleryItem) => (
-              <div
+            filteredItems.map((item: GalleryItemType) => (
+              <GalleryItem
                 key={item._id}
-                onClick={() => setPreviewItem(item)}
-                className="group relative bg-card rounded-3xl overflow-hidden border border-border/50 hover:border-primary/50 shadow-sm hover:shadow-2xl transition-all duration-500 cursor-pointer"
-              >
-                {/* Media Component */}
-                <div className="aspect-square relative flex items-center justify-center bg-black">
-                  {item.type === 'image' ? (
-                    <img
-                      src={item.url}
-                      alt={item.fileName}
-                      className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
-                    />
-                  ) : (
-                    <div className="w-full h-full relative">
-                      <video
-                        src={item.url}
-                        className="w-full h-full object-cover opacity-80"
-                        onMouseOver={(e) => e.currentTarget.play()}
-                        onMouseOut={(e) => {
-                          e.currentTarget.pause();
-                          e.currentTarget.currentTime = 0;
-                        }}
-                        muted
-                        loop
-                      />
-                      <div className="absolute inset-0 flex items-center justify-center">
-                        <div className="p-4 rounded-full bg-black/40 backdrop-blur-md text-white border border-white/20 opacity-100 group-hover:opacity-0 transition-opacity">
-                          <Play className="w-8 h-8 fill-current" />
-                        </div>
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Overlay Info */}
-                  <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 p-6 flex flex-col justify-end">
-                    <p className="text-white font-black uppercase text-[10px] tracking-widest truncate mb-1">
-                      {item.fileName}
-                    </p>
-                    <div className="flex items-center justify-between">
-                      <span className="text-white/60 font-bold text-[8px] uppercase">{formatSize(item.size)}</span>
-                      <div className="flex items-center space-x-2">
-                        <Button
-                          variant="secondary"
-                          size="icon"
-                          onClick={(e) => handleDownload(item.url, item.fileName, e)}
-                          className="rounded-xl h-8 w-8 bg-white/20 hover:bg-white/40 text-white transition-all border-0"
-                        >
-                          <Download className="w-4 h-4" />
-                        </Button>
-                        <Button
-                          variant="destructive"
-                          size="icon"
-                          onClick={(e) => handleDelete(item._id, e)}
-                          className="rounded-xl h-8 w-8 bg-loss/80 hover:bg-loss transition-all"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </Button>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Icon Badge */}
-                  <div className="absolute top-4 left-4 p-2 rounded-xl bg-background/60 backdrop-blur-md border border-white/10 group-hover:bg-primary group-hover:text-white transition-all">
-                    {item.type === 'image' ? <ImageIcon className="w-4 h-4" /> : <VideoIcon className="w-4 h-4" />}
-                  </div>
-                </div>
-              </div>
+                item={item}
+                onPreview={setPreviewItem}
+                onDelete={handleDelete}
+                onDownload={handleDownload}
+                formatSize={formatSize}
+              />
             ))
           )}
         </div>
 
-        {/* Lightbox Preview */}
         {previewItem && (
-          <div className="fixed inset-0 z-[100] bg-black/95 backdrop-blur-xl flex items-center justify-center p-4 md:p-12 animate-in fade-in duration-300">
-            <button
-              onClick={() => setPreviewItem(null)}
-              className="absolute top-8 right-8 p-3 rounded-full bg-white/10 text-white hover:bg-white/20 transition-all z-10"
-            >
-              <X className="w-8 h-8" />
-            </button>
-
-            <div className="w-full h-full flex flex-col items-center justify-center space-y-6">
-              <div className="relative w-full h-full flex items-center justify-center">
-                {previewItem.type === 'image' ? (
-                  <img src={previewItem.url} alt={previewItem.fileName} className="max-w-full max-h-full object-contain rounded-2xl shadow-2xl" />
-                ) : (
-                  <video src={previewItem.url} controls autoPlay className="max-w-full max-h-full rounded-2xl shadow-2xl" />
-                )}
-              </div>
-
-              <div className="text-center space-y-2">
-                <h3 className="text-2xl font-black text-white uppercase tracking-tighter italic">{previewItem.fileName}</h3>
-                <p className="text-white/40 font-bold uppercase text-[10px] tracking-widest">
-                  Type: {previewItem.mimeType} • Size: {formatSize(previewItem.size)} • Created: {new Date(previewItem.createdAt).toLocaleDateString()}
-                </p>
-                <div className="pt-4">
-                  <Button
-                    onClick={() => handleDownload(previewItem.url, previewItem.fileName)}
-                    className="rounded-2xl h-12 px-8 bg-primary text-white font-black uppercase tracking-widest active:scale-95 transition-all"
-                  >
-                    <Download className="w-5 h-5 mr-2" />
-                    Download Original
-                  </Button>
-                </div>
-              </div>
-            </div>
-          </div>
+          <GalleryLightbox
+            item={previewItem}
+            onClose={() => setPreviewItem(null)}
+            onDownload={handleDownload}
+            formatSize={formatSize}
+          />
         )}
-
       </div>
     </MainLayout>
   );

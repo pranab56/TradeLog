@@ -22,7 +22,6 @@ import {
   History,
   Info,
   Lightbulb,
-  Loader2,
   Percent,
   Target,
   TrendingDown,
@@ -31,6 +30,7 @@ import {
   Zap
 } from 'lucide-react';
 import { memo, useMemo, useState } from 'react';
+import Loading from '../../components/Loading/Loading';
 
 // --- Types ---
 interface DailySummary {
@@ -298,251 +298,242 @@ export default function TradingCalendarPage() {
     return stats;
   }, [dailyDataMap, currentMonth]);
 
-
-
-  if (isLoading) {
-    return (
-      <MainLayout>
-        <div className="h-[80vh] flex items-center justify-center">
-          <div className="flex flex-col items-center space-y-4">
-            <Loader2 className="w-12 h-12 text-primary animate-spin" />
-            <p className="text-sm font-black uppercase tracking-widest opacity-50">Syncing Trade Log...</p>
-          </div>
-        </div>
-      </MainLayout>
-    );
-  }
-
   const randomTip = MOTIVATIONAL_TIPS[Math.floor((currentMonth.getMonth() + currentMonth.getDate()) % MOTIVATIONAL_TIPS.length)];
 
   return (
     <MainLayout>
-      <div className="space-y-8 pb-10">
-        {/* Header Area */}
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
-          <div>
-            <h1 className="text-xl font-semibold mb-1">Trading Progress</h1>
-            <p className="text-sm flex items-center font-normal">
-              <CalendarIcon className="w-4 h-4 mr-2" />
-              Visualizing your performance delta across time.
-            </p>
-          </div>
-
-          <div className="flex items-center gap-3 bg-card border border-border p-2 rounded-2xl shadow-sm">
-            <Button
-              variant="outline"
-              size="icon"
-              className="rounded-xl h-10 w-10 cursor-pointer"
-              onClick={() => setCurrentMonth(prev => new Date(prev.getFullYear(), prev.getMonth() - 1, 1))}
-            >
-              <ChevronLeft className="w-5 h-5" />
-            </Button>
-            <div className="px-6 py-2 bg-primary/5 rounded-xl border border-primary/10">
-              <span className="text-sm font-semibold text-primary">
-                {format(currentMonth, "MMMM yyyy")}
-              </span>
-            </div>
-            <Button
-              variant="outline"
-              size="icon"
-              className="rounded-xl h-10 w-10 cursor-pointer"
-              onClick={() => setCurrentMonth(prev => new Date(prev.getFullYear(), prev.getMonth() + 1, 1))}
-            >
-              <ChevronRight className="w-5 h-5" />
-            </Button>
-          </div>
-        </div>
-
-        {/* Motivation/Psychology Tip */}
-        <div className="bg-primary/5 border border-primary/10 p-6 rounded-xl relative overflow-hidden group">
-          <div className="absolute top-0 left-0 w-1 h-full bg-primary" />
-          <div className="flex items-start gap-4">
-            <div className="p-3 bg-primary/10 rounded-2xl text-primary shrink-0 transition-transform group-hover:scale-110">
-              <Lightbulb className="w-6 h-6" />
-            </div>
-            <div className="space-y-1">
-              <h4 className="text-base font-semibold text-primary/70">Psychology Tip of the Month</h4>
-              <p className="text-lg font-black italic tracking-tight opacity-90 leading-tight">
-                "{randomTip}"
-              </p>
-            </div>
-          </div>
-          <Zap className="absolute right-8 top-1/2 -translate-y-1/2 w-24 h-24 text-primary/5 -rotate-12" />
-        </div>
-
-        <div className="grid grid-cols-1 xl:grid-cols-4 gap-8">
-          {/* Calendar Section (L) */}
-          <Card className="xl:col-span-3 border-border bg-card/30 backdrop-blur-sm rounded-xl overflow-hidden shadow-xl">
-            <div className="p-8 border-b border-border/50 flex items-center justify-between bg-accent/5">
-              <div className="flex items-center space-x-3">
-                <div className="p-2 bg-primary rounded-xl text-white">
-                  <History className="w-5 h-5" />
-                </div>
-                <h3 className="text-xl font-semibold">Activity Blueprint</h3>
-              </div>
-              <div className="flex items-center space-x-6">
-                <div className="flex items-center space-x-2">
-                  <div className="w-2.5 h-2.5 rounded-full bg-profit shadow-[0_0_8px_rgba(34,197,94,0.4)]" />
-                  <span className="text-sm font-semibold text-profit">Profit Edge</span>
-                </div>
-                <div className="flex items-center space-x-2">
-                  <div className="w-2.5 h-2.5 rounded-full bg-loss shadow-[0_0_8px_rgba(239,68,68,0.4)]" />
-                  <span className="text-sm font-semibold text-loss">Drawdown</span>
-                </div>
-              </div>
-            </div>
-            <div className="p-4 md:p-8 w-full">
-              {/* Custom Calendar Grid */}
-              <div className="w-full h-full">
-                {/* Weekday Headers */}
-                <div className="grid grid-cols-7 mb-4">
-                  {['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'].map((day) => (
-                    <div key={day} className="text-muted-foreground font-black text-[10px] uppercase tracking-[0.2em] text-center py-2">
-                      {day}
-                    </div>
-                  ))}
-                </div>
-
-                {/* Days Grid */}
-                <div className="grid grid-cols-7 gap-2">
-                  {(() => {
-                    const monthStart = startOfMonth(currentMonth);
-                    const monthEnd = endOfMonth(currentMonth);
-                    const startDate = startOfWeek(monthStart);
-                    const endDate = endOfWeek(monthEnd);
-
-                    const calendarDays = [];
-                    let day = startDate;
-
-                    while (day <= endDate) {
-                      calendarDays.push(day);
-                      day = addDays(day, 1);
-                    }
-
-                    return calendarDays.map((date, i) => {
-                      const dateKey = format(date, "yyyy-MM-dd");
-                      const isCurrentMonth = isSameMonth(date, monthStart);
-
-                      return (
-                        <div key={dateKey} className="aspect-square relative">
-                          <DayButton
-                            day={{ date }}
-                            className={cn(
-                              "w-full h-full",
-                              !isCurrentMonth && "opacity-20 pointer-events-none"
-                            )}
-                            summary={dailyDataMap[dateKey]}
-                            threshold={lossThreshold}
-                          />
-                        </div>
-                      );
-                    });
-                  })()}
-                </div>
-              </div>
-            </div>
-          </Card>
-
-          {/* Stats & Summary (R) */}
-          <div className="xl:col-span-1 space-y-8">
-            <Card className="border-border bg-card/50 rounded-xl overflow-hidden shadow-lg border-2 border-primary/10 p-0">
-              <div className="p-6 border-b border-border/50 bg-primary/5">
-                <h4 className="text-sm font-bold text-primary flex items-center">
-                  <Activity className="w-4 h-4 mr-2" />
-                  Monthly Summary
-                </h4>
-              </div>
-              <CardContent className="px-4 py-3 space-y-6">
-                <div>
-                  <p className="text-sm font-semibold mb-3">Net Performance</p>
-                  <div className={cn(
-                    "text-4xl font-black italic tracking-tighter",
-                    monthlyStats.netResult >= 0 ? "text-profit" : "text-loss"
-                  )}>
-                    {monthlyStats.netResult >= 0 ? "+" : "-"}${Math.abs(monthlyStats.netResult).toLocaleString()}
-                  </div>
-                  <div className="mt-2 text-[10px] font-bold text-muted-foreground uppercase flex items-center">
-                    <Info className="w-3 h-3 mr-1" />
-                    Overall {monthlyStats.netResult >= 0 ? "Profit" : "Loss"} for this cycle
-                  </div>
-                </div>
-
-                <div className="space-y-4 pt-4 border-t border-border/50">
-                  <div className="flex justify-between items-end">
-                    <div className="space-y-1">
-                      <p className="text-[10px] font-black text-muted-foreground uppercase tracking-widest">Growth</p>
-                      <p className="text-lg font-black text-profit">+${monthlyStats.totalProfit.toLocaleString()}</p>
-                    </div>
-                    <div className="space-y-1 text-right">
-                      <p className="text-[10px] font-black text-muted-foreground uppercase tracking-widest">Burn</p>
-                      <p className="text-lg font-black text-loss">-${monthlyStats.totalLoss.toLocaleString()}</p>
-                    </div>
-                  </div>
-
-                  <div className="h-2 w-full bg-accent/50 rounded-full overflow-hidden flex shadow-inner">
-                    <div
-                      className="h-full bg-profit transition-all duration-700"
-                      style={{ width: `${(monthlyStats.totalProfit / (monthlyStats.totalProfit + monthlyStats.totalLoss || 1)) * 100}%` }}
-                    />
-                    <div className="h-full bg-loss" style={{ flex: 1 }} />
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-2 gap-4 pt-4">
-                  <div className="bg-accent/30 p-4 rounded-2xl border border-border/50">
-                    <p className="text-[9px] font-black text-muted-foreground uppercase mb-1">Win Rate</p>
-                    <div className="flex items-center space-x-2">
-                      <Percent className="w-4 h-4 text-profit" />
-                      <span className="text-xl font-black">{monthlyStats.winRate.toFixed(1)}%</span>
-                    </div>
-                  </div>
-                  <div className="bg-accent/30 p-4 rounded-2xl border border-border/50">
-                    <p className="text-[9px] font-black text-muted-foreground uppercase mb-1">Trades</p>
-                    <div className="flex items-center space-x-2">
-                      <Target className="w-4 h-4 text-primary" />
-                      <span className="text-xl font-black">{monthlyStats.totalTrades}</span>
-                    </div>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-
-            <div className="space-y-4">
-              <div className="bg-profit/5 border border-profit/20 p-5 rounded-2xl flex items-center justify-between">
-                <div>
-                  <p className="text-[9px] font-black text-profit/80 uppercase">Best Day</p>
-                  <p className="text-xl font-black text-profit">${monthlyStats.bestDay.toLocaleString()}</p>
-                </div>
-                <ArrowUpRight className="w-8 h-8 text-profit opacity-20" />
+      {
+        isLoading ? (
+          <Loading />
+        ) : (
+          <div className="space-y-8 pb-10">
+            {/* Header Area */}
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
+              <div>
+                <h1 className="text-xl font-semibold mb-1">Trading Progress</h1>
+                <p className="text-sm flex items-center font-normal">
+                  <CalendarIcon className="w-4 h-4 mr-2" />
+                  Visualizing your performance delta across time.
+                </p>
               </div>
 
-              <div className="bg-loss/5 border border-loss/20 p-5 rounded-2xl flex items-center justify-between">
-                <div>
-                  <p className="text-[9px] font-black text-loss/80 uppercase">Worst Day</p>
-                  <p className="text-xl font-black text-loss">${Math.abs(monthlyStats.worstDay).toLocaleString()}</p>
+              <div className="flex items-center gap-3 bg-card border border-border p-2 rounded-2xl shadow-sm">
+                <Button
+                  variant="outline"
+                  size="icon"
+                  className="rounded-xl h-10 w-10 cursor-pointer"
+                  onClick={() => setCurrentMonth(prev => new Date(prev.getFullYear(), prev.getMonth() - 1, 1))}
+                >
+                  <ChevronLeft className="w-5 h-5" />
+                </Button>
+                <div className="px-6 py-2 bg-primary/5 rounded-xl border border-primary/10">
+                  <span className="text-sm font-semibold text-primary">
+                    {format(currentMonth, "MMMM yyyy")}
+                  </span>
                 </div>
-                <ArrowDownRight className="w-8 h-8 text-loss opacity-20" />
-              </div>
-            </div>
-
-            <Card className="bg-gradient-to-br from-primary/10 to-transparent border border-primary/20 p-6 rounded-3xl relative overflow-hidden">
-              <div className="relative z-10 flex flex-col items-center text-center space-y-4">
-                <div className="w-12 h-12 bg-white rounded-2xl flex items-center justify-center text-primary shadow-lg shadow-primary/20">
-                  <Trophy className="w-6 h-6" />
-                </div>
-                <div>
-                  <h5 className="font-black text-sm uppercase tracking-widest">Consistency Target</h5>
-                  <p className="text-xs text-muted-foreground font-medium mt-1">Aim for 3 consecutive green days to unlock Next-Level badges.</p>
-                </div>
-                <Button className="w-full rounded-xl h-12 font-black uppercase tracking-widest bg-primary text-primary-foreground shadow-2xl shadow-primary/20 transition-transform active:scale-95 cursor-pointer">
-                  View Achievement Vault
+                <Button
+                  variant="outline"
+                  size="icon"
+                  className="rounded-xl h-10 w-10 cursor-pointer"
+                  onClick={() => setCurrentMonth(prev => new Date(prev.getFullYear(), prev.getMonth() + 1, 1))}
+                >
+                  <ChevronRight className="w-5 h-5" />
                 </Button>
               </div>
-              <div className="absolute top-0 right-0 w-32 h-32 bg-primary/10 rounded-full -mr-16 -mt-16 blur-3xl" />
-            </Card>
+            </div>
+
+            {/* Motivation/Psychology Tip */}
+            <div className="bg-primary/5 border border-primary/10 p-6 rounded-xl relative overflow-hidden group">
+              <div className="absolute top-0 left-0 w-1 h-full bg-primary" />
+              <div className="flex items-start gap-4">
+                <div className="p-3 bg-primary/10 rounded-2xl text-primary shrink-0 transition-transform group-hover:scale-110">
+                  <Lightbulb className="w-6 h-6" />
+                </div>
+                <div className="space-y-1">
+                  <h4 className="text-base font-semibold text-primary/70">Psychology Tip of the Month</h4>
+                  <p className="text-lg font-black italic tracking-tight opacity-90 leading-tight">
+                    "{randomTip}"
+                  </p>
+                </div>
+              </div>
+              <Zap className="absolute right-8 top-1/2 -translate-y-1/2 w-24 h-24 text-primary/5 -rotate-12" />
+            </div>
+
+            <div className="grid grid-cols-1 xl:grid-cols-4 gap-8">
+              {/* Calendar Section (L) */}
+              <Card className="xl:col-span-3 border-border bg-card/30 backdrop-blur-sm rounded-xl overflow-hidden shadow-xl">
+                <div className="p-8 border-b border-border/50 flex items-center justify-between bg-accent/5">
+                  <div className="flex items-center space-x-3">
+                    <div className="p-2 bg-primary rounded-xl text-white">
+                      <History className="w-5 h-5" />
+                    </div>
+                    <h3 className="text-xl font-semibold">Activity Blueprint</h3>
+                  </div>
+                  <div className="flex items-center space-x-6">
+                    <div className="flex items-center space-x-2">
+                      <div className="w-2.5 h-2.5 rounded-full bg-profit shadow-[0_0_8px_rgba(34,197,94,0.4)]" />
+                      <span className="text-sm font-semibold text-profit">Profit Edge</span>
+                    </div>
+                    <div className="flex items-center space-x-2">
+                      <div className="w-2.5 h-2.5 rounded-full bg-loss shadow-[0_0_8px_rgba(239,68,68,0.4)]" />
+                      <span className="text-sm font-semibold text-loss">Drawdown</span>
+                    </div>
+                  </div>
+                </div>
+                <div className="p-4 md:p-8 w-full">
+                  {/* Custom Calendar Grid */}
+                  <div className="w-full h-full">
+                    {/* Weekday Headers */}
+                    <div className="grid grid-cols-7 mb-4">
+                      {['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'].map((day) => (
+                        <div key={day} className="text-muted-foreground font-black text-[10px] uppercase tracking-[0.2em] text-center py-2">
+                          {day}
+                        </div>
+                      ))}
+                    </div>
+
+                    {/* Days Grid */}
+                    <div className="grid grid-cols-7 gap-2">
+                      {(() => {
+                        const monthStart = startOfMonth(currentMonth);
+                        const monthEnd = endOfMonth(currentMonth);
+                        const startDate = startOfWeek(monthStart);
+                        const endDate = endOfWeek(monthEnd);
+
+                        const calendarDays = [];
+                        let day = startDate;
+
+                        while (day <= endDate) {
+                          calendarDays.push(day);
+                          day = addDays(day, 1);
+                        }
+
+                        return calendarDays.map((date, i) => {
+                          const dateKey = format(date, "yyyy-MM-dd");
+                          const isCurrentMonth = isSameMonth(date, monthStart);
+
+                          return (
+                            <div key={dateKey} className="aspect-square relative">
+                              <DayButton
+                                day={{ date }}
+                                className={cn(
+                                  "w-full h-full",
+                                  !isCurrentMonth && "opacity-20 pointer-events-none"
+                                )}
+                                summary={dailyDataMap[dateKey]}
+                                threshold={lossThreshold}
+                              />
+                            </div>
+                          );
+                        });
+                      })()}
+                    </div>
+                  </div>
+                </div>
+              </Card>
+
+              {/* Stats & Summary (R) */}
+              <div className="xl:col-span-1 space-y-8">
+                <Card className="border-border bg-card/50 rounded-xl overflow-hidden shadow-lg border-2 border-primary/10 p-0">
+                  <div className="p-6 border-b border-border/50 bg-primary/5">
+                    <h4 className="text-sm font-bold text-primary flex items-center">
+                      <Activity className="w-4 h-4 mr-2" />
+                      Monthly Summary
+                    </h4>
+                  </div>
+                  <CardContent className="px-4 py-3 space-y-6">
+                    <div>
+                      <p className="text-sm font-semibold mb-3">Net Performance</p>
+                      <div className={cn(
+                        "text-4xl font-black italic tracking-tighter",
+                        monthlyStats.netResult >= 0 ? "text-profit" : "text-loss"
+                      )}>
+                        {monthlyStats.netResult >= 0 ? "+" : "-"}${Math.abs(monthlyStats.netResult).toLocaleString()}
+                      </div>
+                      <div className="mt-2 text-[10px] font-bold text-muted-foreground uppercase flex items-center">
+                        <Info className="w-3 h-3 mr-1" />
+                        Overall {monthlyStats.netResult >= 0 ? "Profit" : "Loss"} for this cycle
+                      </div>
+                    </div>
+
+                    <div className="space-y-4 pt-4 border-t border-border/50">
+                      <div className="flex justify-between items-end">
+                        <div className="space-y-1">
+                          <p className="text-[10px] font-black text-muted-foreground uppercase tracking-widest">Growth</p>
+                          <p className="text-lg font-black text-profit">+${monthlyStats.totalProfit.toLocaleString()}</p>
+                        </div>
+                        <div className="space-y-1 text-right">
+                          <p className="text-[10px] font-black text-muted-foreground uppercase tracking-widest">Burn</p>
+                          <p className="text-lg font-black text-loss">-${monthlyStats.totalLoss.toLocaleString()}</p>
+                        </div>
+                      </div>
+
+                      <div className="h-2 w-full bg-accent/50 rounded-full overflow-hidden flex shadow-inner">
+                        <div
+                          className="h-full bg-profit transition-all duration-700"
+                          style={{ width: `${(monthlyStats.totalProfit / (monthlyStats.totalProfit + monthlyStats.totalLoss || 1)) * 100}%` }}
+                        />
+                        <div className="h-full bg-loss" style={{ flex: 1 }} />
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-4 pt-4">
+                      <div className="bg-accent/30 p-4 rounded-2xl border border-border/50">
+                        <p className="text-[9px] font-black text-muted-foreground uppercase mb-1">Win Rate</p>
+                        <div className="flex items-center space-x-2">
+                          <Percent className="w-4 h-4 text-profit" />
+                          <span className="text-xl font-black">{monthlyStats.winRate.toFixed(1)}%</span>
+                        </div>
+                      </div>
+                      <div className="bg-accent/30 p-4 rounded-2xl border border-border/50">
+                        <p className="text-[9px] font-black text-muted-foreground uppercase mb-1">Trades</p>
+                        <div className="flex items-center space-x-2">
+                          <Target className="w-4 h-4 text-primary" />
+                          <span className="text-xl font-black">{monthlyStats.totalTrades}</span>
+                        </div>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+
+                <div className="space-y-4">
+                  <div className="bg-profit/5 border border-profit/20 p-5 rounded-2xl flex items-center justify-between">
+                    <div>
+                      <p className="text-[9px] font-black text-profit/80 uppercase">Best Day</p>
+                      <p className="text-xl font-black text-profit">${monthlyStats.bestDay.toLocaleString()}</p>
+                    </div>
+                    <ArrowUpRight className="w-8 h-8 text-profit opacity-20" />
+                  </div>
+
+                  <div className="bg-loss/5 border border-loss/20 p-5 rounded-2xl flex items-center justify-between">
+                    <div>
+                      <p className="text-[9px] font-black text-loss/80 uppercase">Worst Day</p>
+                      <p className="text-xl font-black text-loss">${Math.abs(monthlyStats.worstDay).toLocaleString()}</p>
+                    </div>
+                    <ArrowDownRight className="w-8 h-8 text-loss opacity-20" />
+                  </div>
+                </div>
+
+                <Card className="bg-gradient-to-br from-primary/10 to-transparent border border-primary/20 p-6 rounded-3xl relative overflow-hidden">
+                  <div className="relative z-10 flex flex-col items-center text-center space-y-4">
+                    <div className="w-12 h-12 bg-white rounded-2xl flex items-center justify-center text-primary shadow-lg shadow-primary/20">
+                      <Trophy className="w-6 h-6" />
+                    </div>
+                    <div>
+                      <h5 className="font-black text-sm uppercase tracking-widest">Consistency Target</h5>
+                      <p className="text-xs text-muted-foreground font-medium mt-1">Aim for 3 consecutive green days to unlock Next-Level badges.</p>
+                    </div>
+                    <Button className="w-full rounded-xl h-12 font-black uppercase tracking-widest bg-primary text-primary-foreground shadow-2xl shadow-primary/20 transition-transform active:scale-95 cursor-pointer">
+                      View Achievement Vault
+                    </Button>
+                  </div>
+                  <div className="absolute top-0 right-0 w-32 h-32 bg-primary/10 rounded-full -mr-16 -mt-16 blur-3xl" />
+                </Card>
+              </div>
+            </div>
           </div>
-        </div>
-      </div>
+        )
+      }
     </MainLayout>
   );
 }

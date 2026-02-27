@@ -49,16 +49,6 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Invalid session' }, { status: 401 });
     }
 
-    // For large files (1GB), we use formData but we are careful.
-    // In App Router, we usually use formData(). 
-    // However, if we want to stream directly, we'd use request.body.
-    // For simplicity with filename/type, formData is better but buffers more.
-    // Let's use a hybrid or just standard formData for now with a note.
-
-    // NOTE: For 1GB files, ideally we should use a custom reader to avoid buffering.
-    // Since App Router's formData() might buffer in some environments, 
-    // a more robust way is to use a multipart parser that streams.
-
     const formData = await request.formData();
     const file = formData.get('file') as File;
 

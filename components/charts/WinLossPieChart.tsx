@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import {
   Cell,
   Legend,
@@ -15,10 +16,15 @@ interface WinLossPieChartProps {
 }
 
 export default function WinLossPieChart({ wins, losses }: WinLossPieChartProps) {
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => setMounted(true), []);
+
   const data = [
     { name: 'Wins', value: wins, color: 'var(--profit)' },
     { name: 'Losses', value: losses, color: 'var(--loss)' },
   ];
+
+  if (!mounted) return <div className="h-[300px] w-full" />;
 
   return (
     <div className="h-[300px] w-full">
