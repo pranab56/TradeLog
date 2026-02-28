@@ -57,24 +57,29 @@ export default function MessageItem({
   const isDocument = message.messageType === 'document';
   const isAudio = message.messageType === 'audio';
 
+  const isImageOnly = isImage && (!message.content || message.content === 'Photo' || message.content === 'Sent an image');
+  const isEmojiOnly = isText && typeof message.content === 'string' && message.content.trim().length > 0 && /^[\p{Emoji_Presentation}\p{Extended_Pictographic}\s]+$/u.test(message.content.trim());
+  const hasNoBackground = isImageOnly || isEmojiOnly;
+
   return (
     <div className={cn(
-      "group flex items-end gap-2 mb-1",
-      isOwn ? "flex-row-reverse" : "flex-row",
-      !showAvatar && (isOwn ? "mr-10" : "ml-10")
+      "group flex items-end gap-2 mb-1 w-full",
+      isOwn ? "flex-row-reverse" : "flex-row"
     )}>
-      {!isOwn && showAvatar && (
-        <Avatar className="w-8 h-8 flex-shrink-0 mb-1 ring-1 ring-primary/5">
+      {!isOwn && showAvatar ? (
+        <Avatar className="w-8 h-8 flex-shrink-0 cursor-pointer">
           <AvatarImage src={message.senderId.profileImage} />
-          <AvatarFallback className="bg-primary/5 text-[10px] text-primary">
+          <AvatarFallback className="bg-primary/10 text-xs text-primary font-bold">
             {message.senderId.name?.charAt(0)}
           </AvatarFallback>
         </Avatar>
+      ) : (
+        !isOwn && <div className="w-8 flex-shrink-0" />
       )}
 
       <div className={cn(
-        "relative max-w-[70%] flex flex-col",
-        isOwn ? "items-end" : "items-start"
+        "relative flex flex-col w-full min-w-0",
+        isOwn ? "items-end ml-10" : "items-start mr-10"
       )}>
         {showAvatar && !isOwn && (
           <span className="text-[10px] text-muted-foreground ml-1 mb-1 font-medium">
@@ -87,7 +92,10 @@ export default function MessageItem({
             <Pin className="w-3 h-3 fill-current" /> Pinned
           </div>
         )}
-        <div className="flex items-center gap-2 w-full">
+        <div className={cn(
+          "flex items-center gap-2 w-full",
+          isOwn ? "justify-end" : "justify-start"
+        )}>
           {isOwn && (
             <div className="opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0">
               <MessageActions
@@ -101,15 +109,21 @@ export default function MessageItem({
           )}
 
           <div className={cn(
-            "rounded-2xl px-4 py-2.5 shadow-sm text-sm relative transition-all group/bubble",
-            isOwn
-              ? "bg-primary text-primary-foreground rounded-br-sm"
-              : "bg-muted text-foreground rounded-bl-sm border border-border/50",
-            isImage && "p-1 overflow-hidden",
+            "relative group/bubble inline-block text-left break-words max-w-full",
+            hasNoBackground
+              ? "bg-transparent shadow-none"
+              : cn(
+                "px-3 py-1.5 shadow-sm text-[15px]",
+                isOwn
+                  ? "bg-primary text-primary-foreground rounded-2xl rounded-br-sm"
+                  : "bg-muted text-foreground rounded-2xl rounded-bl-sm border border-border/10",
+                isImage && "p-1"
+              ),
+            isEmojiOnly && "text-5xl my-2",
             message.isDeleted && "opacity-50 italic"
           )}>
             {/* Reply Context */}
-            {message.replyTo && (
+            {(message.replyTo && message.replyTo.senderName) && (
               <div className={cn(
                 "mb-2 p-2 rounded-lg text-xs border-l-4 bg-black/5 flex flex-col gap-0.5",
                 isOwn ? "border-primary-foreground/50" : "border-primary/50"
@@ -121,14 +135,19 @@ export default function MessageItem({
               </div>
             )}
 
-            {isText && <p className="leading-relaxed whitespace-pre-wrap">{message.content}</p>}
+            {isText && <p className="leading-snug whitespace-pre-wrap">{message.content}</p>}
 
             {isImage && (
-              <img
-                src={message.mediaUrl}
-                alt="Image"
-                className="rounded-xl max-w-full h-auto object-cover max-h-80 transition-transform hover:scale-[1.02] cursor-pointer"
-              />
+              <div className="flex flex-col gap-1.5">
+                <img
+                  src={message.mediaUrl}
+                  alt="Image"
+                  className="rounded-xl max-w-full h-auto object-cover max-h-80 transition-transform hover:scale-[1.02] cursor-pointer"
+                />
+                {message.content && message.content !== 'Photo' && message.content !== 'Sent an image' && (
+                  <p className="leading-snug whitespace-pre-wrap text-[15px] px-1 pb-1 pt-1">{message.content}</p>
+                )}
+              </div>
             )}
 
             {isDocument && (
@@ -144,15 +163,15 @@ export default function MessageItem({
             )}
 
             {isAudio && (
-              <div className="flex items-center gap-3 p-2 min-w-[200px]">
-                <Button size="icon" variant="ghost" className="rounded-full bg-primary-foreground/20 h-8 w-8">
-                  <Play className="w-4 h-4 fill-current" />
+              <div className="flex items-center gap-3 p-1 min-w-[200px]">
+                <Button size="icon" variant="ghost" className="rounded-full bg-primary-foreground/20 h-10 w-10 shrink-0">
+                  <Play className="w-5 h-5 fill-current ml-1" />
                 </Button>
                 <div className="flex-1 space-y-1">
                   <div className="h-1 bg-primary-foreground/30 rounded-full w-full relative">
                     <div className="absolute left-0 top-0 h-full bg-primary-foreground w-1/3 rounded-full" />
                   </div>
-                  <div className="flex justify-between text-[10px]">
+                  <div className="flex justify-between text-[11px]">
                     <span>0:12</span>
                     <span>0:45</span>
                   </div>
@@ -160,20 +179,19 @@ export default function MessageItem({
               </div>
             )}
 
-            <div className={cn(
-              "flex items-center gap-2 mt-1 justify-end",
-              isOwn ? "text-primary-foreground/70" : "text-muted-foreground"
+            <span className={cn(
+              "float-right text-[11px] flex gap-1 items-center mt-2 ml-3 -mr-1 -mb-1",
+              isOwn && !hasNoBackground ? "text-primary-foreground/80" : "text-muted-foreground"
             )}>
-              {message.isEdited && !message.isDeleted && <span className="text-[9px] uppercase font-bold tracking-wider">Edited</span>}
-              <span className="text-[10px]">
-                {dayjs(message.createdAt).format('HH:mm')}
-              </span>
+              {message.isEdited && !message.isDeleted && <span className="uppercase text-[9px] font-bold tracking-widest mr-0.5">Edited</span>}
+              <span>{dayjs(message.createdAt).format('h:mm A')}</span>
               {isOwn && (
                 message.status === 'read'
-                  ? <CheckCheck className="w-3 h-3 text-primary-foreground" />
-                  : <Check className="w-3 h-3" />
+                  ? <CheckCheck className="w-[14px] h-[14px] text-blue-500" />
+                  : <Check className="w-[14px] h-[14px]" />
               )}
-            </div>
+            </span>
+            <div className="clear-both" />
 
             {/* Reactions Display */}
             {message.reactions && message.reactions.length > 0 && (

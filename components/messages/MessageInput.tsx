@@ -12,12 +12,10 @@ import { useSocket } from '@/providers/socket-provider';
 import data from '@emoji-mart/data';
 import Picker from '@emoji-mart/react';
 import {
-  Edit2,
   Image as ImageIcon,
   Loader2,
   Mic,
   Paperclip,
-  Plus,
   Send,
   Smile,
   X
@@ -45,6 +43,7 @@ export default function MessageInput({
 }: MessageInputProps) {
   const [content, setContent] = useState('');
   const [isUploading, setIsUploading] = useState(false);
+  const [selectedImage, setSelectedImage] = useState<string | null>(null);
   const { socket } = useSocket();
   const typingTimeoutRef = useRef<any>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -58,8 +57,13 @@ export default function MessageInput({
   }, [editingMessage]);
 
   const handleSend = () => {
-    if (content.trim()) {
-      onSend(content);
+    if (content.trim() || selectedImage) {
+      if (selectedImage) {
+        onSend(content.trim() || 'Photo', 'image', selectedImage);
+        setSelectedImage(null);
+      } else {
+        onSend(content.trim());
+      }
       setContent('');
       if (socket) {
         socket.emit('stop-typing', { conversationId, userId: currentUser?.id });
@@ -109,7 +113,7 @@ export default function MessageInput({
       const reader = new FileReader();
       reader.onloadend = () => {
         const base64String = reader.result as string;
-        onSend("Sent an image", 'image', base64String);
+        setSelectedImage(base64String);
         setIsUploading(false);
       };
       reader.readAsDataURL(file);
@@ -123,7 +127,7 @@ export default function MessageInput({
   };
 
   return (
-    <div className="p-4 border-t bg-card/50 backdrop-blur-sm relative">
+    <div className="p-2 border-t bg-card flex flex-col relative w-full">
       <input
         type="file"
         ref={fileInputRef}
@@ -134,17 +138,14 @@ export default function MessageInput({
 
       {/* Reply Preview */}
       {replyingTo && (
-        <div className="absolute bottom-full left-0 right-0 bg-muted/90 backdrop-blur-md p-3 border-t flex items-center justify-between animate-in slide-in-from-bottom-2">
-          <div className="flex items-center gap-3 overflow-hidden">
-            <div className="w-1 bg-primary h-10 rounded-full" />
-            <div className="overflow-hidden">
-              <p className="text-xs font-bold text-primary">Replying to {replyingTo.senderId.name}</p>
-              <p className="text-sm text-muted-foreground truncate italic">
-                {replyingTo.messageType === 'text' ? replyingTo.content : 'Image'}
-              </p>
-            </div>
+        <div className="bg-background border-l-2 border-primary pl-3 pr-2 py-2 mb-2 rounded-md flex items-center justify-between mx-2 animate-in slide-in-from-bottom-2">
+          <div className="overflow-hidden">
+            <p className="text-xs font-bold text-primary">Reply to {replyingTo.senderId?.name || 'Message'}</p>
+            <p className="text-sm text-muted-foreground truncate italic">
+              {replyingTo.messageType === 'text' ? replyingTo.content : 'Image'}
+            </p>
           </div>
-          <Button variant="ghost" size="icon" onClick={onCancelReply} className="h-8 w-8 text-muted-foreground hover:text-foreground">
+          <Button variant="ghost" size="icon" onClick={onCancelReply} className="h-6 w-6 text-muted-foreground">
             <X className="w-4 h-4" />
           </Button>
         </div>
@@ -152,73 +153,66 @@ export default function MessageInput({
 
       {/* Editing Preview */}
       {editingMessage && (
-        <div className="absolute bottom-full left-0 right-0 bg-primary/10 backdrop-blur-md p-3 border-t border-primary/20 flex items-center justify-between animate-in slide-in-from-bottom-2">
-          <div className="flex items-center gap-3 overflow-hidden">
-            <div className="w-8 h-8 rounded-full bg-primary/20 text-primary flex items-center justify-center">
-              <Edit2 className="w-4 h-4" />
-            </div>
-            <div className="overflow-hidden">
-              <p className="text-xs font-bold text-primary">Editing Message</p>
-              <p className="text-sm text-muted-foreground truncate italic">{editingMessage.content}</p>
-            </div>
+        <div className="bg-background border-l-2 border-blue-500 pl-3 pr-2 py-2 mb-2 rounded-md flex items-center justify-between mx-2 animate-in slide-in-from-bottom-2">
+          <div className="overflow-hidden">
+            <p className="text-xs font-bold text-blue-500">Edit Message</p>
+            <p className="text-sm text-muted-foreground truncate italic">{editingMessage.content}</p>
           </div>
-          <Button variant="ghost" size="icon" onClick={onCancelEdit} className="h-8 w-8 text-muted-foreground hover:text-foreground">
+          <Button variant="ghost" size="icon" onClick={onCancelEdit} className="h-6 w-6 text-muted-foreground">
             <X className="w-4 h-4" />
           </Button>
         </div>
       )}
 
-      <div className="flex items-end gap-2 max-w-4xl mx-auto">
+      {/* Image Preview */}
+      {selectedImage && (
+        <div className="bg-background border-l-2 border-green-500 pl-3 pr-2 py-2 mb-2 rounded-md flex items-center justify-between mx-2 animate-in slide-in-from-bottom-2">
+          <div className="flex items-center gap-3 overflow-hidden">
+            <img src={selectedImage} alt="Preview" className="w-10 h-10 rounded object-cover" />
+            <p className="text-sm font-semibold text-green-500">Image attached</p>
+          </div>
+          <Button variant="ghost" size="icon" onClick={() => setSelectedImage(null)} className="h-6 w-6 text-muted-foreground">
+            <X className="w-4 h-4" />
+          </Button>
+        </div>
+      )}
+
+      <div className="flex items-end gap-1 px-2 mx-auto w-full max-w-4xl">
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <button className="p-3 rounded-2xl hover:bg-muted text-muted-foreground transition-colors flex-shrink-0 mb-1">
-              <Plus className="w-5 h-5" />
-            </button>
+            <Button variant="ghost" size="icon" className="hover:bg-muted text-muted-foreground transition-colors rounded-full flex-shrink-0 mb-0.5">
+              <Paperclip className="w-5 h-5 rotate-45" />
+            </Button>
           </DropdownMenuTrigger>
-          <DropdownMenuContent align="start" className="w-48 p-2">
+          <DropdownMenuContent align="start" className="w-48 p-2 mb-2 rounded-xl">
             <DropdownMenuItem className="gap-2 cursor-pointer p-2 rounded-lg" onClick={handleFileClick}>
               <div className="w-8 h-8 rounded-full bg-blue-500/10 text-blue-500 flex items-center justify-center">
                 <ImageIcon className="w-4 h-4" />
               </div>
-              Photos & Videos
-            </DropdownMenuItem>
-            <DropdownMenuItem className="gap-2 cursor-pointer p-2 rounded-lg">
-              <div className="w-8 h-8 rounded-full bg-orange-500/10 text-orange-500 flex items-center justify-center">
-                <Paperclip className="w-4 h-4" />
-              </div>
-              Document
-            </DropdownMenuItem>
-            <DropdownMenuItem className="gap-2 cursor-pointer p-2 rounded-lg">
-              <div className="w-8 h-8 rounded-full bg-red-500/10 text-red-500 flex items-center justify-center">
-                <Mic className="w-4 h-4" />
-              </div>
-              Voice Note
+              Photo or Video
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
 
-        <div className="flex-1 relative flex items-center">
+        <div className="flex-1 relative flex items-center h-[44px]">
           <textarea
             value={content}
             onChange={handleChange}
             onKeyDown={handleKeyDown}
-            placeholder={editingMessage ? "Edit message..." : "Type a message..."}
-            className="w-full bg-muted/60 border-none rounded-2xl px-5 py-3 pr-12 text-sm focus:ring-2 focus:ring-primary/20 transition-all resize-none min-h-[48px] max-h-32 shadow-inner"
+            placeholder={editingMessage ? "Edit message..." : "Write a message..."}
+            className="w-full h-full bg-transparent border-none px-3 py-2.5 text-[15px] focus:outline-none focus:ring-0 resize-none overflow-y-auto custom-scrollbar text-foreground placeholder:text-muted-foreground"
             rows={1}
-            style={{ height: 'auto' }}
-            onInput={(e) => {
-              const target = e.target as HTMLTextAreaElement;
-              target.style.height = 'auto';
-              target.style.height = `${Math.min(target.scrollHeight, 128)}px`;
-            }}
           />
+        </div>
+
+        <div className="flex items-center gap-1 mb-0.5">
           <Popover>
             <PopoverTrigger asChild>
-              <Button variant="ghost" size="icon" className="absolute right-2 text-muted-foreground hover:text-primary transition-colors">
+              <Button variant="ghost" size="icon" className="text-muted-foreground hover:text-primary transition-colors rounded-full">
                 <Smile className="w-5 h-5" />
               </Button>
             </PopoverTrigger>
-            <PopoverContent side="top" align="end" className="p-0 border-none shadow-2xl rounded-2xl overflow-hidden mb-4">
+            <PopoverContent side="top" align="end" sideOffset={10} className="p-0 border-none shadow-2xl rounded-2xl overflow-hidden">
               <Picker
                 data={data}
                 onEmojiSelect={(emoji: any) => setContent(prev => prev + emoji.native)}
@@ -228,18 +222,22 @@ export default function MessageInput({
               />
             </PopoverContent>
           </Popover>
-        </div>
 
-        <Button
-          onClick={handleSend}
-          disabled={!content.trim() || isUploading}
-          className={cn(
-            "rounded-2xl w-12 h-12 flex-shrink-0 transition-all transform active:scale-95 shadow-lg",
-            content.trim() ? "bg-primary text-white" : "bg-muted text-muted-foreground"
+          {content.trim() || isUploading || selectedImage ? (
+            <Button
+              onClick={handleSend}
+              disabled={isUploading}
+              size="icon"
+              className="rounded-full w-10 h-10 flex-shrink-0 transition-transform hover:scale-105 bg-primary text-primary-foreground"
+            >
+              {isUploading ? <Loader2 className="w-5 h-5 animate-spin" /> : <Send className="w-4 h-4 ml-0.5" />}
+            </Button>
+          ) : (
+            <Button variant="ghost" size="icon" className="text-muted-foreground hover:text-primary rounded-full transition-colors">
+              <Mic className="w-5 h-5" />
+            </Button>
           )}
-        >
-          {isUploading ? <Loader2 className="w-5 h-5 animate-spin" /> : <Send className="w-5 h-5" />}
-        </Button>
+        </div>
       </div>
     </div>
   );

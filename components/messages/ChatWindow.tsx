@@ -103,12 +103,25 @@ export default function ChatWindow({ conversation, currentUser, onMessageSent }:
       setMessages(prev => prev.map(m => toStr(m._id) === toStr(updatedMessage._id) ? updatedMessage : m));
     };
 
+    const onMessageRead = (data: any) => {
+      if (toStr(data.conversationId) === convId) {
+        setMessages(prev => prev.map(m => {
+          // If the message was sent by the current user and the other person read it, mark it as read
+          if (toStr(m.senderId._id) === toStr(currentUser?.id) && toStr(currentUser?.id) !== toStr(data.userId)) {
+            return { ...m, status: 'read' };
+          }
+          return m;
+        }));
+      }
+    };
+
     socket.on('receive-message', onReceiveMessage);
     socket.on('user-typing', onUserTyping);
     socket.on('user-stop-typing', onUserStopTyping);
     socket.on('message-edited', onMessageEdited);
     socket.on('message-deleted', onMessageDeleted);
     socket.on('message-reacted', onMessageReacted);
+    socket.on('message-read', onMessageRead);
 
     return () => {
       socket.off('connect', joinRoom);
@@ -118,6 +131,7 @@ export default function ChatWindow({ conversation, currentUser, onMessageSent }:
       socket.off('message-edited', onMessageEdited);
       socket.off('message-deleted', onMessageDeleted);
       socket.off('message-reacted', onMessageReacted);
+      socket.off('message-read', onMessageRead);
     };
   }, [convId, socket, isConnected]);
 
@@ -133,7 +147,7 @@ export default function ChatWindow({ conversation, currentUser, onMessageSent }:
 
       // Mark as read
       await axios.post('/api/conversations/read', { conversationId: conversation._id });
-      if (socket) socket.emit('mark-read', { conversationId: conversation._id });
+      if (socket) socket.emit('mark-read', { conversationId: conversation._id, userId: currentUser?.id });
     } catch (err) {
       console.error('Fetch messages error', err);
     } finally {
@@ -141,11 +155,14 @@ export default function ChatWindow({ conversation, currentUser, onMessageSent }:
     }
   };
 
-  const scrollToBottom = () => {
+  const scrollToBottom = (behavior: 'smooth' | 'auto' = 'smooth') => {
     if (scrollRef.current) {
+      // With flex-col-reverse layout, the bottom is automatically maintained
+      // and scrollTo({top: 0}) might not be necessary or behaves differently,
+      // but if we need to ensure we are at the bottom:
       scrollRef.current.scrollTo({
-        top: scrollRef.current.scrollHeight,
-        behavior: 'smooth'
+        top: 0,
+        behavior
       });
     }
   };
@@ -279,18 +296,23 @@ export default function ChatWindow({ conversation, currentUser, onMessageSent }:
       </div>
 
       {/* Messages Area */}
-      <div className="flex-1 relative overflow-hidden" id="scrollableDiv" style={{ height: '100%', overflow: 'auto' }}>
+      <div
+        className="flex-1 relative overflow-hidden"
+        id="scrollableDiv"
+        ref={scrollRef}
+        style={{ height: '100%', overflow: 'auto', display: 'flex', flexDirection: 'column-reverse' }}
+      >
         <InfiniteScroll
           dataLength={messages.length}
           next={() => { }} // Handle pagination logic here
           hasMore={false}
           loader={<div className="flex justify-center p-4"><Loader2 className="w-6 h-6 animate-spin text-primary" /></div>}
           scrollableTarget="scrollableDiv"
-          inverse={false}
-          style={{ display: 'flex', flexDirection: 'column-reverse' }} // For "new items at bottom" scroll
-          className="p-4"
+          inverse={true}
+          style={{ display: 'flex', flexDirection: 'column-reverse', width: '100%' }}
+          className="p-4 w-full"
         >
-          <div className="space-y-4 max-w-4xl mx-auto flex flex-col">
+          <div className="space-y-1.5 space-y-reverse flex flex-col-reverse w-full pb-4">
             {typingUser && (
               <div className="flex items-center gap-2 text-xs text-muted-foreground ml-12 mb-4 animate-in fade-in slide-in-from-bottom-2">
                 <div className="flex gap-1">
@@ -302,17 +324,18 @@ export default function ChatWindow({ conversation, currentUser, onMessageSent }:
               </div>
             )}
 
-            {[...messages].reverse().map((msg, index) => (
+            {[...messages].reverse().map((msg, index, reversedArr) => (
               <motion.div
                 key={msg._id}
-                initial={{ opacity: 0, scale: 0.95, y: 10 }}
+                className="w-full"
+                initial={{ opacity: 0, scale: 0.98, y: 5 }}
                 animate={{ opacity: 1, scale: 1, y: 0 }}
-                transition={{ duration: 0.2, delay: index * 0.05 }}
+                transition={{ duration: 0.15, ease: "easeOut" }}
               >
                 <MessageItem
                   message={msg}
                   isOwn={msg.senderId._id === currentUser?.id}
-                  showAvatar={index === messages.length - 1 || messages[messages.length - 1 - index + 1]?.senderId._id !== msg.senderId._id}
+                  showAvatar={index === 0 || reversedArr[index - 1]?.senderId._id !== msg.senderId._id}
                   onReply={() => setReplyingTo(msg)}
                   onReact={(emoji) => handleReact(msg._id, emoji)}
                   onEdit={() => setEditingMessage(msg)}
@@ -322,7 +345,7 @@ export default function ChatWindow({ conversation, currentUser, onMessageSent }:
             ))}
 
             {messages.length === 0 && !loading && (
-              <div className="flex flex-col items-center justify-center p-12 text-center h-full">
+              <div className="flex flex-col items-center justify-center p-12 text-center h-full my-auto">
                 <div className="w-16 h-16 bg-muted rounded-full flex items-center justify-center mb-4">
                   <span className="text-2xl">👋</span>
                 </div>
@@ -342,7 +365,7 @@ export default function ChatWindow({ conversation, currentUser, onMessageSent }:
 
       {/* Input Area */}
       {conversation.isBlocked ? (
-        <div className="p-4 text-center bg-muted max-w-lg mx-auto w-full my-4 rounded-xl border border-border">
+        <div className="p-4 text-center bg-muted w-full border-t border-border">
           <p className="font-semibold text-muted-foreground">You cannot reply to this conversation</p>
         </div>
       ) : (

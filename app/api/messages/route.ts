@@ -82,7 +82,15 @@ export async function GET(req: Request) {
           },
           reactions: 1,
           isEdited: 1,
-          isDeleted: 1
+          isDeleted: 1,
+          readBy: 1,
+          status: {
+            $cond: {
+              if: { $gt: [{ $size: { $ifNull: ['$readBy', []] } }, 0] },
+              then: 'read',
+              else: '$status'
+            }
+          }
         }
       }
     ]).toArray();
