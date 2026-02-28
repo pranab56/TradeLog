@@ -110,12 +110,24 @@ export default function MessagesPage() {
           fetchConversations();
           return prev;
         }
+        const isCurrentlyOpen = toStr(selectedConvRef.current?._id) === msgConvId;
+        if (isCurrentlyOpen) {
+          // We are currently looking at this conversation, so mark read automatically
+          axios.post('/api/conversations/read', { conversationId: msgConvId }).catch(() => { });
+          if (socket) socket.emit('mark-read', { conversationId: msgConvId });
+        }
+
         return prev
-          .map(conv =>
-            toStr(conv._id) === msgConvId
-              ? { ...conv, lastMessage: message, updatedAt: new Date() }
-              : conv
-          )
+          .map(conv => {
+            if (toStr(conv._id) !== msgConvId) return conv;
+            const isSentByMe = toStr(message.senderId?._id || message.senderId) === toStr(currentUserRef.current?._id || currentUserRef.current?.id);
+            return {
+              ...conv,
+              lastMessage: message,
+              updatedAt: new Date(),
+              unreadCount: (isCurrentlyOpen || isSentByMe) ? 0 : (conv.unreadCount || 0) + 1
+            };
+          })
           .sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime());
       });
     };
@@ -149,12 +161,19 @@ export default function MessagesPage() {
     };
 
     const onConversationCreated = (data: any) => {
-      console.log('[MessagesPage] conversation-created');
+      console.log('[MessagesPage] conversation-created/updated');
+      if (data.action === 'block' && data.isBlocked) {
+        toast.error(`${data.blockedBy} blocked you.`);
+      }
       fetchConversations();
     };
 
     const onConversationDeleted = (data: any) => {
       console.log('[MessagesPage] conversation-deleted');
+      fetchConversations();
+    };
+
+    const onMessageRead = (data: any) => {
       fetchConversations();
     };
 
@@ -178,6 +197,7 @@ export default function MessagesPage() {
     socket.on('conversation-created', onConversationCreated);
     socket.on('conversation-deleted', onConversationDeleted);
     socket.on('presence-update', onPresenceUpdate);
+    socket.on('message-read', onMessageRead);
 
     return () => {
       socket.off('receive-message', onReceiveMessage);
@@ -187,6 +207,7 @@ export default function MessagesPage() {
       socket.off('conversation-created', onConversationCreated);
       socket.off('conversation-deleted', onConversationDeleted);
       socket.off('presence-update', onPresenceUpdate);
+      socket.off('message-read', onMessageRead);
     };
   }, [socket]);
 
@@ -196,7 +217,13 @@ export default function MessagesPage() {
         <ChatSidebar
           conversations={conversations}
           requests={requests}
-          onSelect={setSelectedConversation}
+          onSelect={(conv) => {
+            setSelectedConversation(conv);
+            // Optimistically clear unread count for real-time visual update
+            setConversations(prev => prev.map(c =>
+              toStr(c._id) === toStr(conv._id) ? { ...c, unreadCount: 0 } : c
+            ));
+          }}
           selectedId={selectedConversation?._id}
           loading={loading}
           currentUser={currentUser}
@@ -211,6 +238,16 @@ export default function MessagesPage() {
           <ChatWindow
             conversation={selectedConversation}
             currentUser={currentUser}
+            onMessageSent={(msg) => {
+              setConversations(prev => {
+                const updated = prev.map(c =>
+                  toStr(c._id) === toStr(msg.conversationId)
+                    ? { ...c, lastMessage: msg, updatedAt: new Date(), unreadCount: 0 }
+                    : c
+                );
+                return updated.sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime());
+              });
+            }}
           />
         ) : (
           <div className="flex-1 flex flex-col items-center justify-center text-muted-foreground p-8 bg-muted/10">

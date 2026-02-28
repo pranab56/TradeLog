@@ -1,6 +1,8 @@
 "use client";
 
 import { useLogoutMutation } from '@/features/auth/authApi';
+import { useSocket } from '@/providers/socket-provider';
+import axios from 'axios';
 import {
   BarChart3,
   Calendar,
@@ -18,6 +20,8 @@ import {
 } from 'lucide-react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
+import { useEffect, useState } from 'react';
+
 
 const navItems = [
   { name: 'Overview', href: '/', icon: LayoutDashboard },
@@ -40,6 +44,51 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
   const pathname = usePathname();
   const router = useRouter();
   const [logout, { isLoading }] = useLogoutMutation();
+  const { socket } = useSocket();
+  const [unreadCount, setUnreadCount] = useState(0);
+
+  const fetchUnreadCount = async () => {
+    try {
+      const res = await axios.get('/api/conversations');
+      const total = res.data.conversations.reduce((acc: number, c: any) => acc + (c.unreadCount || 0), 0);
+      setUnreadCount(total);
+    } catch (err) { }
+  };
+
+  useEffect(() => {
+    fetchUnreadCount();
+  }, [pathname]);
+
+  useEffect(() => {
+    if (!socket) return;
+    const onNewMsg = async (message: any) => {
+      if (pathname !== '/messages') {
+        // Play sound
+        try {
+          const res = await axios.get('/api/conversations');
+          const conv = res.data.conversations.find((c: any) => c._id === message.conversationId);
+          if (conv && !conv.isMuted) {
+            const audio = new Audio('/audio/audio.wav');
+            audio.play().catch((err) => {
+              console.log('Audio playback prevented by browser:', err);
+            });
+          }
+        } catch (e) { }
+      }
+      fetchUnreadCount();
+    };
+    const onUpdate = () => {
+      fetchUnreadCount();
+    };
+    socket.on('new-message-notification', onNewMsg);
+    socket.on('message-read', onUpdate);
+    socket.on('conversation-deleted', onUpdate);
+    return () => {
+      socket.off('new-message-notification', onNewMsg);
+      socket.off('message-read', onUpdate);
+      socket.off('conversation-deleted', onUpdate);
+    };
+  }, [socket, pathname]);
 
   const handleLogout = async () => {
     try {
@@ -91,7 +140,12 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
               `}
             >
               <Icon className={`w-5 h-5 transition-transform duration-200 group-hover:scale-110`} />
-              <span className="font-bold text-xs uppercase tracking-tight">{item.name}</span>
+              <span className="font-bold text-xs uppercase tracking-tight flex-1">{item.name}</span>
+              {item.name === 'Messages' && unreadCount > 0 && (
+                <span className="bg-primary text-primary-foreground text-[10px] font-bold px-1.5 py-0.5 rounded-full">
+                  {unreadCount}
+                </span>
+              )}
               {isActive && (
                 <div className="absolute right-2 w-1 h-5 bg-primary-foreground rounded-full" />
               )}

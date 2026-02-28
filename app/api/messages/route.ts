@@ -112,6 +112,12 @@ export async function POST(req: Request) {
 
     if (!user) return NextResponse.json({ error: 'User not found' }, { status: 404 });
 
+    const conversation = await db.collection('conversations').findOne({ _id: new ObjectId(conversationId) });
+    if (!conversation) return NextResponse.json({ error: 'Conversation not found' }, { status: 404 });
+    if (conversation.blockedBy && conversation.blockedBy.length > 0) {
+      return NextResponse.json({ error: 'Cannot send messages to a blocked conversation' }, { status: 403 });
+    }
+
     const newMessage = {
       conversationId: new ObjectId(conversationId),
       senderId: user._id,
@@ -134,7 +140,8 @@ export async function POST(req: Request) {
       {
         $set: {
           lastMessageId: result.insertedId,
-          updatedAt: new Date()
+          updatedAt: new Date(),
+          deletedBy: []
         }
       }
     );

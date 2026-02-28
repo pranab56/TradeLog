@@ -88,8 +88,8 @@ export default function ChatSidebar({
 
   const filteredConversations = conversations
     .filter(conv => {
-      if (activeTab === 'all') return !conv.isBlocked;
-      return conv.isBlocked;
+      if (activeTab === 'all') return !conv.isBlockedByMe;
+      return conv.isBlockedByMe;
     })
     .filter(conv => {
       if (conv.isGroup) {
@@ -227,32 +227,46 @@ export default function ChatSidebar({
                           {title?.charAt(0)}
                         </AvatarFallback>
                       </Avatar>
-                      {!conv.isGroup && otherParticipant?.onlineStatus === 'online' && (
-                        <span className="absolute bottom-0 right-0 w-3.5 h-3.5 bg-green-500 border-2 border-background rounded-full" />
+                      {!conv.isGroup && otherParticipant && (
+                        <span className={cn(
+                          "absolute bottom-0 right-0 w-3.5 h-3.5 border-2 border-background rounded-full transition-colors",
+                          otherParticipant?.onlineStatus === 'online' ? "bg-green-500" : "bg-red-500"
+                        )} />
                       )}
                     </div>
 
                     <div className="flex-1 min-w-0">
                       <div className="flex justify-between items-start mb-0.5">
                         <div className="flex items-center gap-1.5 truncate">
-                          <span className="font-semibold truncate">{title}</span>
+                          <span className={cn("truncate", (conv.unreadCount > 0) ? "font-bold text-foreground" : "font-semibold")}>{title}</span>
                           {conv.isPinned && <PinIcon className="w-3 h-3 text-primary fill-primary" />}
                           {conv.isMuted && <VolumeX className="w-3 h-3 text-muted-foreground" />}
                         </div>
                         {conv.lastMessage && (
-                          <span className="text-[11px] text-muted-foreground whitespace-nowrap">
+                          <span className={cn("text-[11px] whitespace-nowrap ml-2", (conv.unreadCount > 0) ? "font-bold text-primary" : "text-muted-foreground")}>
                             {dayjs(conv.updatedAt).format('HH:mm')}
                           </span>
                         )}
                       </div>
-                      <div className="flex justify-between items-center">
-                        <p className="text-xs text-muted-foreground truncate flex-1">
+                      <div className="flex justify-between items-center gap-2">
+                        <p className={cn(
+                          "text-xs line-clamp-1 flex-1 text-left break-all",
+                          (conv.unreadCount > 0) ? "font-semibold text-foreground font-medium" : "text-muted-foreground"
+                        )}>
                           {conv.lastMessage ? (
-                            conv.lastMessage.content
+                            <>
+                              {(String(conv.lastMessage.senderId) === String(currentUser?.id) || String(conv.lastMessage.senderId?._id) === String(currentUser?.id)) && "You: "}
+                              {conv.lastMessage.content}
+                            </>
                           ) : (
                             <span className="italic">No messages yet</span>
                           )}
                         </p>
+                        {conv.unreadCount > 0 && (
+                          <span className="bg-primary text-primary-foreground text-[10px] font-bold px-1.5 py-0.5 rounded-full flex-shrink-0 animate-in zoom-in">
+                            {conv.unreadCount}
+                          </span>
+                        )}
                       </div>
                     </div>
                   </button>
@@ -279,9 +293,19 @@ export default function ChatSidebar({
                         </DropdownMenuItem>
                         <DropdownMenuItem
                           className="gap-2 cursor-pointer text-destructive focus:text-destructive"
-                          onClick={() => handleUpdateConversation(conv._id, { isBlocked: !conv.isBlocked })}
+                          onClick={() => {
+                            handleUpdateConversation(conv._id, { isBlocked: !conv.isBlockedByMe });
+                            if (socket && otherParticipant) {
+                              socket.emit('new-conversation', {
+                                participants: [otherParticipant._id],
+                                action: 'block',
+                                isBlocked: !conv.isBlockedByMe,
+                                blockedBy: currentUser.name
+                              });
+                            }
+                          }}
                         >
-                          <UserMinus className="w-4 h-4" /> {conv.isBlocked ? 'Unblock' : 'Block'}
+                          <UserMinus className="w-4 h-4" /> {conv.isBlockedByMe ? 'Unblock' : 'Block'}
                         </DropdownMenuItem>
                         <DropdownMenuItem
                           className="gap-2 cursor-pointer text-destructive focus:text-destructive"

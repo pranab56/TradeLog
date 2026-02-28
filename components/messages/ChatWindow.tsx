@@ -24,6 +24,7 @@ import MessageItem from './MessageItem';
 interface ChatWindowProps {
   conversation: any;
   currentUser: any;
+  onMessageSent?: (msg: any) => void;
 }
 
 // Normalize any ID (string, ObjectId, {$oid:...}) to a plain string
@@ -35,7 +36,7 @@ const toStr = (id: any): string => {
   return String(id);
 };
 
-export default function ChatWindow({ conversation, currentUser }: ChatWindowProps) {
+export default function ChatWindow({ conversation, currentUser, onMessageSent }: ChatWindowProps) {
   const { socket, isConnected } = useSocket();
   const convId = toStr(conversation._id);
   const [messages, setMessages] = useState<any[]>([]);
@@ -129,6 +130,10 @@ export default function ChatWindow({ conversation, currentUser }: ChatWindowProp
       setLoading(true);
       const res = await axios.get(`/api/messages?conversationId=${conversation._id}`);
       setMessages(res.data.messages);
+
+      // Mark as read
+      await axios.post('/api/conversations/read', { conversationId: conversation._id });
+      if (socket) socket.emit('mark-read', { conversationId: conversation._id });
     } catch (err) {
       console.error('Fetch messages error', err);
     } finally {
@@ -181,6 +186,7 @@ export default function ChatWindow({ conversation, currentUser }: ChatWindowProp
 
       setMessages(prev => [...prev, newMessage]);
       setReplyingTo(null);
+      if (onMessageSent) onMessageSent(newMessage);
 
       if (socket) {
         socket.emit('send-message', {
@@ -245,7 +251,10 @@ export default function ChatWindow({ conversation, currentUser }: ChatWindowProp
             variant="ghost"
             size="icon"
             className="text-muted-foreground transition-colors hover:text-primary"
-            onClick={() => setIsCalling(true)}
+            onClick={() => {
+              if (conversation.isBlocked) return toast.error('Calling is restricted because this chat is blocked.');
+              setIsCalling(true);
+            }}
           >
             <Phone className="w-5 h-5" />
           </Button>
@@ -253,7 +262,10 @@ export default function ChatWindow({ conversation, currentUser }: ChatWindowProp
             variant="ghost"
             size="icon"
             className="text-muted-foreground transition-colors hover:text-primary"
-            onClick={() => toast.info('Video calling coming soon!')}
+            onClick={() => {
+              if (conversation.isBlocked) return toast.error('Calling is restricted because this chat is blocked.');
+              toast.info('Video calling coming soon!');
+            }}
           >
             <Video className="w-5 h-5" />
           </Button>
@@ -329,15 +341,21 @@ export default function ChatWindow({ conversation, currentUser }: ChatWindowProp
       </div>
 
       {/* Input Area */}
-      <MessageInput
-        onSend={handleSendMessage}
-        conversationId={conversation._id}
-        currentUser={currentUser}
-        replyingTo={replyingTo}
-        onCancelReply={() => setReplyingTo(null)}
-        editingMessage={editingMessage}
-        onCancelEdit={() => setEditingMessage(null)}
-      />
+      {conversation.isBlocked ? (
+        <div className="p-4 text-center bg-muted max-w-lg mx-auto w-full my-4 rounded-xl border border-border">
+          <p className="font-semibold text-muted-foreground">You cannot reply to this conversation</p>
+        </div>
+      ) : (
+        <MessageInput
+          onSend={handleSendMessage}
+          conversationId={conversation._id}
+          currentUser={currentUser}
+          replyingTo={replyingTo}
+          onCancelReply={() => setReplyingTo(null)}
+          editingMessage={editingMessage}
+          onCancelEdit={() => setEditingMessage(null)}
+        />
+      )}
 
       {/* Call UI */}
       <CallOverlay

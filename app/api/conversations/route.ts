@@ -45,6 +45,23 @@ export async function GET() {
         }
       },
       { $unwind: { path: '$lastMessage', preserveNullAndEmptyArrays: true } },
+      {
+        $lookup: {
+          from: 'messages',
+          let: { convId: '$_id' },
+          pipeline: [
+            {
+              $match: {
+                $expr: { $eq: ['$conversationId', '$$convId'] },
+                senderId: { $ne: user._id },
+                'readBy.userId': { $ne: user._id }
+              }
+            },
+            { $count: 'unread' }
+          ],
+          as: 'unreadData'
+        }
+      },
       { $sort: { updatedAt: -1 } }
     ]).toArray();
 
@@ -59,7 +76,9 @@ export async function GET() {
       _id: c._id.toString(), // Always a plain string so socket room IDs match
       isPinned: c.pinnedBy?.some((id: ObjectId) => id.toString() === user._id.toString()) || false,
       isMuted: c.mutedBy?.some((id: ObjectId) => id.toString() === user._id.toString()) || false,
-      isBlocked: c.blockedBy?.some((id: ObjectId) => id.toString() === user._id.toString()) || false,
+      isBlocked: c.blockedBy?.length > 0 ? true : false,
+      isBlockedByMe: c.blockedBy?.some((id: ObjectId) => id.toString() === user._id.toString()) || false,
+      unreadCount: c.unreadData?.[0]?.unread || 0,
       participants: c.participantDetails.map((p: any) => ({
         _id: p._id.toString(),
         name: p.name,
@@ -139,26 +158,20 @@ export async function PATCH(req: Request) {
 
     if (!user) return NextResponse.json({ error: 'User not found' }, { status: 404 });
 
-    const updateQuery: any = { $set: { updatedAt: new Date() } };
+    const finalUpdate: any = { $set: { updatedAt: new Date() }, $addToSet: {}, $pull: {} };
 
     if (typeof isPinned !== 'undefined') {
-      updateQuery[isPinned ? '$addToSet' : '$pull'] = { pinnedBy: user._id };
+      if (isPinned) finalUpdate.$addToSet.pinnedBy = user._id; else finalUpdate.$pull.pinnedBy = user._id;
     }
     if (typeof isMuted !== 'undefined') {
-      updateQuery[isMuted ? '$addToSet' : '$pull'] = { mutedBy: user._id };
+      if (isMuted) finalUpdate.$addToSet.mutedBy = user._id; else finalUpdate.$pull.mutedBy = user._id;
     }
     if (typeof isBlocked !== 'undefined') {
-      updateQuery[isBlocked ? '$addToSet' : '$pull'] = { blockedBy: user._id };
+      if (isBlocked) finalUpdate.$addToSet.blockedBy = user._id; else finalUpdate.$pull.blockedBy = user._id;
     }
 
-    // Since MongoDB doesn't allow multiple top-level operators easily in one update if they target same fields,
-    // we handle $set separate from $addToSet/$pull if needed, but here they target different fields.
-    // However, $addToSet and $pull can't be in the same object if we have multiple updates. 
-    // Let's do it sequentially or construct a proper multi-operator query.
-
-    const finalUpdate: any = { $set: { updatedAt: new Date() } };
-    if (updateQuery.$addToSet) finalUpdate.$addToSet = updateQuery.$addToSet;
-    if (updateQuery.$pull) finalUpdate.$pull = updateQuery.$pull;
+    if (Object.keys(finalUpdate.$addToSet).length === 0) delete finalUpdate.$addToSet;
+    if (Object.keys(finalUpdate.$pull).length === 0) delete finalUpdate.$pull;
 
     await db.collection('conversations').updateOne(
       { _id: new ObjectId(conversationId) },
