@@ -23,13 +23,17 @@ const getId = (id) => {
   return String(id);
 };
 
+const { MongoClient, ObjectId } = require('mongodb');
+
+// Connect standalone mongo client for user presence tracking
+const mongoClient = new MongoClient(process.env.MONGODB_URI || 'mongodb+srv://pronab:nCGvGtr06Yvr719h@cluster0.ihezzbq.mongodb.net/');
+mongoClient.connect().then(() => console.log('[SOCKET] MongoDB connected for presence tracking')).catch(console.error);
+
 app.prepare().then(() => {
   const httpServer = createServer(async (req, res) => {
     try {
       const parsedUrl = parse(req.url, true);
-      // IMPORTANT: Do NOT pass /socket.io/ requests to Next.js — Socket.IO owns this path
       if (parsedUrl.pathname && parsedUrl.pathname.startsWith('/socket.io/')) {
-        // Let Socket.IO's engine handle it — do not call Next.js handle()
         return;
       }
       await handle(req, res, parsedUrl);
@@ -41,10 +45,7 @@ app.prepare().then(() => {
   });
 
   const io = new ServerIO(httpServer, {
-    cors: {
-      origin: '*',
-      methods: ['GET', 'POST'],
-    },
+    cors: { origin: '*', methods: ['GET', 'POST'] },
     transports: ['polling', 'websocket'],
     allowEIO3: true,
     pingTimeout: 60000,
@@ -52,7 +53,6 @@ app.prepare().then(() => {
     connectTimeout: 60000,
   });
 
-  // Make io globally available so API routes can emit events if needed
   global.io = io;
 
   io.on('connection', (socket) => {
@@ -71,6 +71,13 @@ app.prepare().then(() => {
       socket.join(uId);
       socket.userId = uId;
       console.log(`[SOCKET] ${socket.id} joined PERSONAL room: "${uId}"`);
+
+      // Update DB to online instantly
+      mongoClient.db('tradelog_main').collection('users').updateOne(
+        { _id: new ObjectId(uId) },
+        { $set: { onlineStatus: 'online' } }
+      ).catch(err => console.error('[SOCKET] Failed to set user online config:', err));
+
       socket.broadcast.emit('presence-update', { userId: uId, status: 'online' });
     });
 
@@ -161,6 +168,12 @@ app.prepare().then(() => {
       const userId = socket.userId;
       if (userId) {
         socket.broadcast.emit('presence-update', { userId, status: 'offline' });
+
+        // Update DB to offline instantly
+        mongoClient.db('tradelog_main').collection('users').updateOne(
+          { _id: new ObjectId(userId) },
+          { $set: { onlineStatus: 'offline' } }
+        ).catch(err => console.error('[SOCKET] Failed to set user offline config:', err));
       }
     });
 

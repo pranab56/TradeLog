@@ -28,9 +28,16 @@ export default function MessagesPage() {
   // Refs to always have the latest values in event callbacks without stale closures
   const currentUserRef = useRef<any>(null);
   const selectedConvRef = useRef<any>(null);
+  const audioRef = useRef<HTMLAudioElement | null>(null);
+  const convRef = useRef<any[]>([]);
+
+  useEffect(() => {
+    audioRef.current = new Audio('/audio/audio.mp3');
+  }, []);
 
   useEffect(() => { currentUserRef.current = currentUser; }, [currentUser]);
   useEffect(() => { selectedConvRef.current = selectedConversation; }, [selectedConversation]);
+  useEffect(() => { convRef.current = conversations; }, [conversations]);
 
   // ─── Data Fetchers ───────────────────────────────────────────────
   const fetchCurrentUser = useCallback(async () => {
@@ -53,9 +60,9 @@ export default function MessagesPage() {
     }
   }, []);
 
-  const fetchConversations = useCallback(async () => {
+  const fetchConversations = useCallback(async (isInitial = false) => {
     try {
-      setLoading(true);
+      if (isInitial) setLoading(true);
       const res = await axios.get('/api/conversations');
       const newConversations = res.data.conversations;
       setConversations(newConversations);
@@ -68,14 +75,14 @@ export default function MessagesPage() {
     } catch (err) {
       console.error('[MessagesPage] Failed to fetch conversations', err);
     } finally {
-      setLoading(false);
+      if (isInitial) setLoading(false);
     }
   }, []);
 
   // ─── Initial Load ────────────────────────────────────────────────
   useEffect(() => {
     fetchCurrentUser();
-    fetchConversations();
+    fetchConversations(true);
     fetchRequests();
   }, []);
 
@@ -137,13 +144,23 @@ export default function MessagesPage() {
       handleIncomingMessage(message);
     };
 
-    const onNewMessageNotification = (message: any) => {
+    const onNewMessageNotification = async (message: any) => {
       handleIncomingMessage(message);
       const user = currentUserRef.current;
       const senderId = toStr(message.senderId?._id || message.senderId);
       const myId = toStr(user?.id);
       if (senderId && myId && senderId !== myId) {
-        toast.info(`New message from ${message.senderId?.name || 'someone'}`);
+        const conv = convRef.current.find((c: any) => toStr(c._id) === toStr(message.conversationId));
+        // Fallback to false if the conversation hasn't loaded in local state yet
+        const isMuted = conv ? conv.isMuted : false;
+
+        if (!isMuted) {
+          toast.info(`New message from ${message.senderId?.name || 'someone'}`);
+          if (audioRef.current) {
+            audioRef.current.currentTime = 0;
+            audioRef.current.play().catch(err => console.log('Audio playback prevented by browser:', err));
+          }
+        }
       }
     };
 

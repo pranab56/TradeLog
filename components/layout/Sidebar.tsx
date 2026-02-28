@@ -20,7 +20,7 @@ import {
 } from 'lucide-react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 
 
 const navItems = [
@@ -46,6 +46,12 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
   const [logout, { isLoading }] = useLogoutMutation();
   const { socket } = useSocket();
   const [unreadCount, setUnreadCount] = useState(0);
+  const audioRef = useRef<HTMLAudioElement | null>(null);
+
+  useEffect(() => {
+    // Only mount audio object once on client component load so browser interacts with it early
+    audioRef.current = new Audio('/audio/audio.mp3');
+  }, []);
 
   const fetchUnreadCount = async () => {
     try {
@@ -65,11 +71,11 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
       if (pathname !== '/messages') {
         // Play sound
         try {
-          const res = await axios.get('/api/conversations');
+          const res = await axios.get(`/api/conversations?t=${Date.now()}`);
           const conv = res.data.conversations.find((c: any) => c._id === message.conversationId);
-          if (conv && !conv.isMuted) {
-            const audio = new Audio('/audio/audio.wav');
-            audio.play().catch((err) => {
+          if (conv && !conv.isMuted && audioRef.current) {
+            audioRef.current.currentTime = 0;
+            audioRef.current.play().catch((err: any) => {
               console.log('Audio playback prevented by browser:', err);
             });
           }
