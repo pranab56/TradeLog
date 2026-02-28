@@ -89,8 +89,7 @@ const DayButton = memo(({
   className?: string;
   summary?: DailySummary;
   threshold?: number;
-  [key: string]: any;
-}) => {
+} & React.ButtonHTMLAttributes<HTMLButtonElement>) => {
   if (!summary) {
     return (
       <button
@@ -208,7 +207,7 @@ const DayButton = memo(({
               <div className="bg-profit/5 border border-profit/20 rounded-2xl p-4 flex gap-3">
                 <Trophy className="w-5 h-5 text-profit shrink-0" />
                 <p className="text-xs font-medium italic text-profit leading-relaxed">
-                  Excellent discipline. Remember: market doesn't owe you anything for yesterday's win.
+                  Excellent discipline. Remember: market doesn&apos;t owe you anything for yesterday&apos;s win.
                 </p>
               </div>
             )}
@@ -231,7 +230,7 @@ export default function TradingCalendarPage() {
   const dailyDataMap = useMemo(() => {
     const map: Record<string, DailySummary> = {};
     if (Array.isArray(trades)) {
-      trades.forEach((trade: any) => {
+      trades.forEach((trade: { date: string; profit: string; loss: string; notes?: string }) => {
         const dateKey = format(parseISO(trade.date), "yyyy-MM-dd");
         if (!map[dateKey]) {
           map[dateKey] = {
@@ -273,8 +272,6 @@ export default function TradingCalendarPage() {
       worstDay: 0
     };
 
-    const monthStart = startOfMonth(currentMonth);
-    const monthEnd = endOfMonth(currentMonth);
 
     Object.values(dailyDataMap).forEach(summary => {
       const summaryDate = parseISO(summary.date);
@@ -352,7 +349,7 @@ export default function TradingCalendarPage() {
                 <div className="space-y-1">
                   <h4 className="text-[10px] md:text-xs font-black text-primary/70 uppercase tracking-widest">Psychology Tip</h4>
                   <p className="text-sm md:text-lg font-black italic tracking-tight opacity-90 leading-snug">
-                    "{randomTip}"
+                    &quot;{randomTip}&quot;
                   </p>
                 </div>
               </div>
@@ -408,7 +405,7 @@ export default function TradingCalendarPage() {
                           day = addDays(day, 1);
                         }
 
-                        return calendarDays.map((date, i) => {
+                        return calendarDays.map((date) => {
                           const dateKey = format(date, "yyyy-MM-dd");
                           const isCurrentMonth = isSameMonth(date, monthStart);
 

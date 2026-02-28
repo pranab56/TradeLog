@@ -11,17 +11,13 @@ interface SettingsActionBarProps {
   message: { text: string; type: 'success' | 'error' } | null;
   isUpdating: boolean;
   handleSave: () => void;
-  name: string;
-  username: string;
 }
 
 const SettingsActionBar = ({
   sessionDate,
   message,
   isUpdating,
-  handleSave,
-  name,
-  username
+  handleSave
 }: SettingsActionBarProps) => {
   return (
     <div className="mt-20 md:mt-24 flex flex-col md:flex-row md:items-center justify-between gap-6 pt-12 md:pt-16">

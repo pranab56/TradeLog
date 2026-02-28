@@ -1,4 +1,4 @@
-import { verifyToken } from '@/lib/auth-utils';
+import { TokenPayload, verifyToken } from '@/lib/auth-utils';
 import { getDb } from '@/lib/mongodb-client';
 import { cookies } from 'next/headers';
 import { NextResponse } from 'next/server';
@@ -19,7 +19,7 @@ export async function GET(req: Request) {
       return NextResponse.json({ error: 'Not authenticated' }, { status: 401 });
     }
 
-    const decoded: any = verifyToken(token);
+    const decoded = verifyToken(token) as TokenPayload | null;
     if (!decoded) {
       return NextResponse.json({ error: 'Invalid token' }, { status: 401 });
     }
@@ -59,8 +59,8 @@ export async function GET(req: Request) {
         matchingCount: users.length
       }
     });
-  } catch (error: any) {
-    console.error('User search error:', error);
+  } catch (err: unknown) {
+    console.error('User search error:', err);
     return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });
   }
 }

@@ -12,22 +12,34 @@ import { Input } from '@/components/ui/input';
 import { useSocket } from '@/providers/socket-provider';
 import axios from 'axios';
 import { Loader2, Search, UserPlus } from 'lucide-react';
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { toast } from 'sonner';
 
 interface SearchUsersProps {
   isOpen: boolean;
   onClose: () => void;
-  onSelect: (user: any) => void;
-  currentUser: any;
+  onSelect: () => void;
+  currentUser: { id: string; name: string } | null;
 }
 
 export default function SearchUsers({ isOpen, onClose, onSelect, currentUser }: SearchUsersProps) {
   const { socket } = useSocket();
   const [query, setQuery] = useState('');
-  const [results, setResults] = useState<any[]>([]);
+  const [results, setResults] = useState<{ _id: string; name: string; email: string; profileImage?: string; onlineStatus?: string }[]>([]);
   const [loading, setLoading] = useState(false);
   const [requestingId, setRequestingId] = useState<string | null>(null);
+
+  const searchUsers = useCallback(async () => {
+    try {
+      setLoading(true);
+      const res = await axios.get(`/api/users/search?q=${query}`);
+      setResults(res.data.users || []);
+    } catch (err: unknown) {
+      console.error('Search error', err);
+    } finally {
+      setLoading(false);
+    }
+  }, [query]);
 
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -39,28 +51,16 @@ export default function SearchUsers({ isOpen, onClose, onSelect, currentUser }: 
     }, 500);
 
     return () => clearTimeout(timer);
-  }, [query]);
+  }, [query, searchUsers]);
 
-  const searchUsers = async () => {
-    try {
-      setLoading(true);
-      const res = await axios.get(`/api/users/search?q=${query}`);
-      setResults(res.data.users || []);
-    } catch (err: any) {
-      console.error('Search error', err.response?.data || err.message);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleSendRequest = async (user: any) => {
+  const handleSendRequest = async (user: { _id: string; name: string }) => {
     try {
       setRequestingId(user._id);
       await axios.post('/api/requests', {
         receiverId: user._id
       });
 
-      if (socket) {
+      if (socket && currentUser) {
         socket.emit('new-invite', {
           receiverId: user._id,
           senderName: currentUser.name,
@@ -69,10 +69,12 @@ export default function SearchUsers({ isOpen, onClose, onSelect, currentUser }: 
       }
 
       toast.success(`Message request sent to ${user.name}!`);
+      onSelect();
       onClose();
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('Error sending request', err);
-      toast.error(err.response?.data?.error || 'Failed to send message request');
+      const message = err instanceof axios.AxiosError ? err.response?.data?.error : 'Failed to send message request';
+      toast.error(message);
     } finally {
       setRequestingId(null);
     }

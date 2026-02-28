@@ -1,4 +1,4 @@
-import { verifyToken } from '@/lib/auth-utils';
+import { TokenPayload, verifyToken } from '@/lib/auth-utils';
 import { getUserDb } from '@/lib/mongodb-client';
 import { cookies } from 'next/headers';
 import { NextResponse } from 'next/server';
@@ -12,7 +12,7 @@ export async function GET() {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const decoded: any = verifyToken(token);
+    const decoded = verifyToken(token) as TokenPayload | null;
     if (!decoded || !decoded.dbName) {
       return NextResponse.json({ error: 'Invalid session' }, { status: 401 });
     }
@@ -21,9 +21,10 @@ export async function GET() {
     const records = await db.collection('trades').find({}).sort({ date: -1 }).toArray();
 
     return NextResponse.json(records);
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Fetch trades error:', error);
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    const message = error instanceof Error ? error.message : 'Unknown error';
+    return NextResponse.json({ error: message }, { status: 500 });
   }
 }
 
@@ -36,7 +37,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const decoded: any = verifyToken(token);
+    const decoded = verifyToken(token) as TokenPayload | null;
     if (!decoded || !decoded.dbName) {
       return NextResponse.json({ error: 'Invalid session' }, { status: 401 });
     }
@@ -78,8 +79,9 @@ export async function POST(request: Request) {
     const result = await tradesCollection.insertOne(newTrade);
 
     return NextResponse.json({ ...newTrade, _id: result.insertedId }, { status: 201 });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Create trade error:', error);
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    const message = error instanceof Error ? error.message : 'Unknown error';
+    return NextResponse.json({ error: message }, { status: 500 });
   }
 }

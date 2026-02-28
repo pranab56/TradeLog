@@ -10,35 +10,40 @@ import { useState } from 'react';
 import { toast } from 'sonner';
 
 interface PendingRequestsProps {
-  requests: any[];
+  requests: {
+    _id: string;
+    senderId: { _id: string; name: string; profileImage?: string };
+    receiverId: string;
+    status: string;
+  }[];
   onAction: () => void;
-  currentUser: any;
+  currentUser: { id: string; name: string } | null;
 }
 
 export default function PendingRequests({ requests, onAction, currentUser }: PendingRequestsProps) {
   const { socket } = useSocket();
-  const [loading, setLoading] = useState(false);
+  const [loading] = useState(false);
 
-  const handleAction = async (request: any, status: 'accepted' | 'rejected') => {
+  const handleAction = async (request: { _id: string; senderId: { _id: string } }, status: 'accepted' | 'rejected') => {
     try {
       await axios.patch('/api/requests', { requestId: request._id, status });
 
       if (status === 'accepted' && socket) {
         socket.emit('invite-accepted', {
-          senderId: request.senderId, // The original sender
-          receiverName: currentUser.name,
-          receiverId: currentUser.id
+          senderId: request.senderId._id, // The original sender
+          receiverName: currentUser?.name,
+          receiverId: currentUser?.id
         });
 
         // Also notify about new conversation
         socket.emit('new-conversation', {
-          participants: [request.senderId, currentUser.id]
+          participants: [request.senderId._id, currentUser?.id]
         });
       }
 
       toast.success(`Request ${status}`);
       onAction();
-    } catch (err) {
+    } catch {
       toast.error('Failed to update request');
     }
   };
@@ -53,12 +58,12 @@ export default function PendingRequests({ requests, onAction, currentUser }: Pen
           <div className="flex flex-col gap-2">
             <div className="flex items-center gap-3">
               <Avatar className="w-8 h-8">
-                <AvatarImage src={request.sender.profileImage} />
-                <AvatarFallback>{request.sender.name.charAt(0)}</AvatarFallback>
+                <AvatarImage src={request.senderId.profileImage} />
+                <AvatarFallback>{request.senderId.name?.charAt(0)}</AvatarFallback>
               </Avatar>
               <div className="flex-1 min-w-0">
                 <p className="text-sm font-semibold truncate leading-tight">
-                  {request.sender.name}
+                  {request.senderId.name}
                 </p>
                 <p className="text-[10px] text-muted-foreground truncate">
                   invited you to message request.

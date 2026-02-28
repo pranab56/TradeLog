@@ -47,8 +47,8 @@ export async function POST(req: Request) {
       email
     }, { status: 201 });
 
-  } catch (error: any) {
-    console.error('Signup error:', error);
+  } catch (err: unknown) {
+    console.error('Signup error:', err);
     return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });
   }
 }

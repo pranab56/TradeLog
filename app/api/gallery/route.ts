@@ -1,5 +1,6 @@
-import { verifyToken } from '@/lib/auth-utils';
+import { TokenPayload, verifyToken } from '@/lib/auth-utils';
 import { getUserDb } from '@/lib/mongodb-client';
+import fs from 'fs';
 import { mkdir } from 'fs/promises';
 import { cookies } from 'next/headers';
 import { NextRequest, NextResponse } from 'next/server';
@@ -20,7 +21,7 @@ export async function GET() {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const decoded: any = verifyToken(token);
+    const decoded = verifyToken(token) as TokenPayload | null;
     if (!decoded || !decoded.dbName) {
       return NextResponse.json({ error: 'Invalid session' }, { status: 401 });
     }
@@ -29,9 +30,10 @@ export async function GET() {
     const gallery = await db.collection('gallery').find({}).sort({ createdAt: -1 }).toArray();
 
     return NextResponse.json(gallery);
-  } catch (error: any) {
-    console.error('Fetch gallery error:', error);
-    return NextResponse.json({ error: error.message }, { status: 500 });
+  } catch (err: unknown) {
+    console.error('Fetch gallery error:', err);
+    const message = err instanceof Error ? err.message : 'Internal Server Error';
+    return NextResponse.json({ error: message }, { status: 500 });
   }
 }
 
@@ -44,7 +46,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const decoded: any = verifyToken(token);
+    const decoded = verifyToken(token) as TokenPayload | null;
     if (!decoded || !decoded.dbName) {
       return NextResponse.json({ error: 'Invalid session' }, { status: 401 });
     }
@@ -69,7 +71,6 @@ export async function POST(request: NextRequest) {
     const bytes = await file.arrayBuffer();
     const buffer = Buffer.from(bytes);
 
-    const fs = require('fs');
     await fs.promises.writeFile(filePath, buffer);
 
     const fileUrl = `/gallery/${fileName}`;
@@ -89,8 +90,9 @@ export async function POST(request: NextRequest) {
     const result = await db.collection('gallery').insertOne(galleryItem);
 
     return NextResponse.json({ ...galleryItem, _id: result.insertedId }, { status: 201 });
-  } catch (error: any) {
-    console.error('Upload gallery error:', error);
-    return NextResponse.json({ error: error.message }, { status: 500 });
+  } catch (err: unknown) {
+    console.error('Upload gallery error:', err);
+    const message = err instanceof Error ? err.message : 'Internal Server Error';
+    return NextResponse.json({ error: message }, { status: 500 });
   }
 }

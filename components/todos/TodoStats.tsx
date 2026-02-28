@@ -9,9 +9,9 @@ export default function TodoStats() {
         <Star className="w-8 h-8 fill-current" />
       </div>
       <div className="flex-1">
-        <h4 className="text-sm font-black uppercase tracking-[0.2em] text-primary mb-1">Commander's Insight</h4>
+        <h4 className="text-sm font-black uppercase tracking-[0.2em] text-primary mb-1">Commander&apos;s Insight</h4>
         <p className="text-base text-muted-foreground font-bold leading-tight">
-          "Small wings move great weight. Complete your next task and keep the momentum. The market rewards the disciplined."
+          &quot;Small wings move great weight. Complete your next task and keep the momentum. The market rewards the disciplined.&quot;
         </p>
       </div>
     </div>

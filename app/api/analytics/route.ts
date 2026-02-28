@@ -3,6 +3,28 @@ import { getDb, getUserDb } from '@/lib/mongodb-client';
 import { cookies } from 'next/headers';
 import { NextResponse } from 'next/server';
 
+interface TokenPayload {
+  email: string;
+  dbName: string;
+  id: string;
+}
+
+interface DailyStats {
+  profit: number;
+  loss: number;
+  count: number;
+  wins: number;
+  rrValues: number[];
+}
+
+interface MonthlyStats {
+  profit: number;
+  loss: number;
+  count: number;
+  wins: number;
+  year: number;
+}
+
 export async function GET(request: Request) {
   try {
     const { searchParams } = new URL(request.url);
@@ -13,7 +35,7 @@ export async function GET(request: Request) {
 
     if (!token) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
-    const decoded: any = verifyToken(token);
+    const decoded = verifyToken(token) as TokenPayload | null;
     if (!decoded || !decoded.dbName) return NextResponse.json({ error: 'Invalid session' }, { status: 401 });
 
     const mainDb = await getDb('tradelog_main');
@@ -44,20 +66,15 @@ export async function GET(request: Request) {
     }
 
     // Aggregations
-    const dailyMap: Record<string, any> = {};
-    const monthlyMap: Record<string, any> = {};
+    const dailyMap: Record<string, DailyStats> = {};
+    const monthlyMap: Record<string, MonthlyStats> = {};
 
     // Session-specific metrics (from capitalUpdateDate onwards)
     let sessionProfit = 0;
     let sessionLoss = 0;
     let sessionWinCount = 0;
     let sessionTotalCount = 0;
-    let sessionRRValues: number[] = [];
-
-    // All-time metrics (true historical)
-    let histTotalProfit = 0;
-    let histTotalLoss = 0;
-    let histWinCount = 0;
+    const sessionRRValues: number[] = [];
 
     rawRecords.forEach(record => {
       const dateObj = new Date(record.date);
@@ -72,12 +89,6 @@ export async function GET(request: Request) {
 
       const p = parseFloat(record.profit) || 0;
       const l = parseFloat(record.loss) || 0;
-      const net = p - l;
-
-      // Update historical counters
-      histTotalProfit += p;
-      histTotalLoss += l;
-      if (p > 0) histWinCount++;
 
       // Update session counters
       if (isAfterReset) {
@@ -149,7 +160,7 @@ export async function GET(request: Request) {
       loss: todayData.loss,
       net: todayNet,
       winRate: todayData.count > 0 ? (todayData.wins / todayData.count) * 100 : 0,
-      avgRR: todayData.rrValues.length > 0 ? `1:${(todayData.rrValues.reduce((a: any, b: any) => a + b, 0) / todayData.rrValues.length).toFixed(1)}` : '1:0.0',
+      avgRR: todayData.rrValues.length > 0 ? `1:${(todayData.rrValues.reduce((a: number, b: number) => a + b, 0) / todayData.rrValues.length).toFixed(1)}` : '1:0.0',
       status: todayNet > 0 ? 'positive' : todayNet < 0 ? 'negative' : 'neutral'
     };
 
@@ -175,8 +186,10 @@ export async function GET(request: Request) {
       winRate: yearlyTrades.length > 0 ? (yearlyTrades.filter(r => (parseFloat(r.profit) || 0) > 0).length / yearlyTrades.length) * 100 : 0,
       roi: (initialCapital > 0) ? (yearlyNet / initialCapital) * 100 : 0,
       maxDrawdown: sessionMaxDrawdown, // Use session drawdown for relevant context
-      bestMonth: Object.entries(monthlyMap).filter(([_, v]: any) => v.year === currentYear).sort((a: any, b: any) => (b[1].profit - b[1].loss) - (a[1].profit - a[1].loss))[0]?.[0] || null,
-      worstMonth: Object.entries(monthlyMap).filter(([_, v]: any) => v.year === currentYear).sort((a: any, b: any) => (a[1].profit - a[1].loss) - (b[1].profit - b[1].loss))[0]?.[0] || null
+      bestMonth: Object.entries(monthlyMap).filter(([, v]) => v.year === currentYear).sort((a, b) => (b[1].profit - b[1].loss) - (a[1].profit - a[1].loss))[0]?.[0] || null,
+
+      worstMonth: Object.entries(monthlyMap).filter(([, v]) => v.year === currentYear).sort((a, b) => (a[1].profit - a[1].loss) - (b[1].profit - b[1].loss))[0]?.[0] || null
+
     };
 
     // Session-based Stats for "All Time" (since reset)
@@ -218,8 +231,9 @@ export async function GET(request: Request) {
       losingStreak: 0
     });
 
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Analytics error:', error);
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    const message = error instanceof Error ? error.message : 'Unknown analytics error';
+    return NextResponse.json({ error: message }, { status: 500 });
   }
 }

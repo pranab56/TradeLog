@@ -20,6 +20,16 @@ import {
 } from 'lucide-react';
 import { useMemo, useState } from 'react';
 
+interface TradeRecord {
+  _id: string;
+  date: string;
+  profit?: number;
+  loss?: number;
+  riskRewardRatio?: string;
+  notes?: string;
+  tags?: string[];
+}
+
 export default function ReportsPage() {
   const { data: records = [], isLoading } = useGetTradesQuery(undefined);
   const [range, setRange] = useState('all');
@@ -31,7 +41,7 @@ export default function ReportsPage() {
     const thirtyDaysAgo = new Date();
     thirtyDaysAgo.setDate(now.getDate() - 30);
 
-    return records.filter((r: any) => {
+    return records.filter((r: TradeRecord) => {
       const tradeDate = new Date(r.date);
       if (range === '30days') return tradeDate >= thirtyDaysAgo;
       if (range === 'thismonth') return tradeDate.getMonth() === now.getMonth() && tradeDate.getFullYear() === now.getFullYear();
@@ -44,7 +54,7 @@ export default function ReportsPage() {
     if (!filteredRecords || filteredRecords.length === 0) return;
 
     const headers = ["Date", "Profit", "Loss", "Net Profit", "RR Ratio", "Notes", "Tags"];
-    const rows = filteredRecords.map((r: any) => [
+    const rows = (filteredRecords as TradeRecord[]).map((r: TradeRecord) => [
       format(new Date(r.date), 'yyyy-MM-dd'),
       r.profit,
       r.loss,
@@ -56,7 +66,7 @@ export default function ReportsPage() {
 
     const csvContent = "data:text/csv;charset=utf-8,"
       + headers.join(",") + "\n"
-      + rows.map((e: any) => e.join(",")).join("\n");
+      + rows.map((e: (string | number | undefined)[]) => e.join(",")).join("\n");
 
     const encodedUri = encodeURI(csvContent);
     const link = document.createElement("a");

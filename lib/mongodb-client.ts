@@ -7,14 +7,15 @@ let clientPromise: Promise<MongoClient>;
 
 if (!MONGODB_URI) {
   // During build, we might not have the URI. Create a dummy promise that throws on actual use.
-  clientPromise = Promise.resolve(null as any);
+  clientPromise = Promise.reject(new Error('MONGODB_URI is not defined')) as unknown as Promise<MongoClient>;
 } else {
   if (process.env.NODE_ENV === 'development') {
-    if (!(global as any)._mongoClientPromise) {
+    const g = global as unknown as { _mongoClientPromise?: Promise<MongoClient> };
+    if (!g._mongoClientPromise) {
       client = new MongoClient(MONGODB_URI);
-      (global as any)._mongoClientPromise = client.connect();
+      g._mongoClientPromise = client.connect();
     }
-    clientPromise = (global as any)._mongoClientPromise;
+    clientPromise = g._mongoClientPromise;
   } else {
     client = new MongoClient(MONGODB_URI);
     clientPromise = client.connect();

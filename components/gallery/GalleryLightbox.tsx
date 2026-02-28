@@ -3,6 +3,7 @@
 import { Button } from '@/components/ui/button';
 import { GalleryItem } from '@/features/gallery/galleryApi';
 import { Download, X } from 'lucide-react';
+import Image from 'next/image';
 
 interface GalleryLightboxProps {
   item: GalleryItem;
@@ -24,7 +25,8 @@ export default function GalleryLightbox({ item, onClose, onDownload, formatSize 
       <div className="w-full h-full flex flex-col items-center justify-center space-y-6 md:space-y-8 max-w-6xl mx-auto">
         <div className="relative w-full flex-1 flex items-center justify-center overflow-hidden">
           {item.type === 'image' ? (
-            <img
+            <Image
+              fill
               src={item.url}
               alt={item.fileName}
               className="max-w-full max-h-full object-contain rounded-xl md:rounded-3xl shadow-2xl"

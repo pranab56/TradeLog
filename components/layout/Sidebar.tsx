@@ -56,9 +56,11 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
   const fetchUnreadCount = async () => {
     try {
       const res = await axios.get('/api/conversations');
-      const total = res.data.conversations.reduce((acc: number, c: any) => acc + (c.unreadCount || 0), 0);
+      const total = res.data.conversations.reduce((acc: number, c: { unreadCount?: number }) => acc + (c.unreadCount || 0), 0);
       setUnreadCount(total);
-    } catch (err) { }
+    } catch (err) {
+      console.error('Fetch unread count error:', err);
+    }
   };
 
   useEffect(() => {
@@ -67,19 +69,21 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
 
   useEffect(() => {
     if (!socket) return;
-    const onNewMsg = async (message: any) => {
+    const onNewMsg = async (message: { conversationId: string }) => {
       if (pathname !== '/messages') {
         // Play sound
         try {
           const res = await axios.get(`/api/conversations?t=${Date.now()}`);
-          const conv = res.data.conversations.find((c: any) => c._id === message.conversationId);
+          const conv = res.data.conversations.find((c: { _id: string; isMuted?: boolean }) => c._id === message.conversationId);
           if (conv && !conv.isMuted && audioRef.current) {
             audioRef.current.currentTime = 0;
-            audioRef.current.play().catch((err: any) => {
-              console.log('Audio playback prevented by browser:', err);
+            audioRef.current.play().catch((playErr: unknown) => {
+              console.log('Audio playback prevented by browser:', playErr);
             });
           }
-        } catch (e) { }
+        } catch (fetchErr) {
+          console.error('Fetch conversation for sound error:', fetchErr);
+        }
       }
       fetchUnreadCount();
     };
@@ -177,7 +181,7 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
         <div className="p-4 rounded-2xl bg-primary/5 border border-primary/10 hidden md:block">
           <p className="text-[10px] text-muted-foreground font-black mb-2 uppercase tracking-widest">Psychology Tip</p>
           <p className="text-xs leading-relaxed font-medium italic opacity-80">
-            "Consistency and discipline are the pillars of every profitable trader."
+            &quot;Consistency and discipline are the pillars of every profitable trader.&quot;
           </p>
         </div>
       </div>

@@ -51,7 +51,7 @@ export default function SettingsPage() {
         setSessionDate(new Date(data.user.capitalUpdateDate));
       }
     }
-  }, [data]);
+  }, [data, bio, coverImage, initialCapital, name, profileImage, username]);
 
   const handleFileUpload = useCallback(async (event: React.ChangeEvent<HTMLInputElement>, type: 'profile' | 'cover') => {
     const file = event.target.files?.[0];
@@ -76,8 +76,9 @@ export default function SettingsPage() {
       } else {
         throw new Error(result.error || 'Upload failed');
       }
-    } catch (err: any) {
-      setMessage({ text: err.message || 'Failed to upload image.', type: 'error' });
+    } catch (err: unknown) {
+      const errorMessage = err instanceof Error ? err.message : 'Failed to upload image.';
+      setMessage({ text: errorMessage, type: 'error' });
       setTimeout(() => setMessage(null), 3000);
     } finally {
       setIsUploading(null);
@@ -102,8 +103,10 @@ export default function SettingsPage() {
       setCurrentPassword('');
       setNewPassword('');
       setTimeout(() => setMessage(null), 3000);
-    } catch (err: any) {
-      setMessage({ text: err.data?.error || 'Failed to update settings.', type: 'error' });
+    } catch (err: unknown) {
+      // RTK Query errors can be complex, but let's try to extract a message
+      const errorMessage = (err as { data?: { error?: string } })?.data?.error || 'Failed to update settings.';
+      setMessage({ text: errorMessage, type: 'error' });
       setTimeout(() => setMessage(null), 3000);
     }
   }, [name, username, bio, profileImage, coverImage, initialCapital, sessionDate, currentPassword, newPassword, updateProfile]);
@@ -127,8 +130,6 @@ export default function SettingsPage() {
             />
 
             <SettingsActionBar
-              name={name}
-              username={username}
               sessionDate={sessionDate}
               message={message}
               isUpdating={isUpdating}

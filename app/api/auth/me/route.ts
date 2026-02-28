@@ -1,4 +1,4 @@
-import { verifyToken } from '@/lib/auth-utils';
+import { TokenPayload, verifyToken } from '@/lib/auth-utils';
 import { getDb } from '@/lib/mongodb-client';
 import bcrypt from 'bcryptjs';
 import { cookies } from 'next/headers';
@@ -13,7 +13,7 @@ export async function GET() {
       return NextResponse.json({ error: 'Not authenticated' }, { status: 401 });
     }
 
-    const decoded: any = verifyToken(token);
+    const decoded = verifyToken(token) as TokenPayload | null;
     if (!decoded) {
       return NextResponse.json({ error: 'Invalid token' }, { status: 401 });
     }
@@ -41,7 +41,8 @@ export async function GET() {
       }
     });
 
-  } catch (error) {
+  } catch (err: unknown) {
+    console.error('Profile fetch error:', err);
     return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });
   }
 }
@@ -55,7 +56,7 @@ export async function PATCH(request: Request) {
       return NextResponse.json({ error: 'Not authenticated' }, { status: 401 });
     }
 
-    const decoded: any = verifyToken(token);
+    const decoded = verifyToken(token) as TokenPayload | null;
     if (!decoded) {
       return NextResponse.json({ error: 'Invalid token' }, { status: 401 });
     }
@@ -81,7 +82,7 @@ export async function PATCH(request: Request) {
       return NextResponse.json({ error: 'User not found' }, { status: 404 });
     }
 
-    const updateData: any = { updatedAt: new Date() };
+    const updateData: Record<string, unknown> = { updatedAt: new Date() };
 
     // Basic Info
     if (name !== undefined) updateData.name = name;
@@ -123,16 +124,15 @@ export async function PATCH(request: Request) {
 
       updateData.password = await bcrypt.hash(newPassword, 10);
     }
-
-    const result = await usersCollection.updateOne(
+    await usersCollection.updateOne(
       { email: decoded.email },
       { $set: updateData }
     );
 
     return NextResponse.json({ message: 'Profile updated successfully' });
 
-  } catch (error) {
-    console.error('Profile update error:', error);
+  } catch (err: unknown) {
+    console.error('Profile update error:', err);
     return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });
   }
 }

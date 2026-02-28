@@ -3,6 +3,7 @@
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { AtSign, Camera, Image as ImageIcon, Loader2, User } from 'lucide-react';
+import Image from 'next/image';
 import { memo } from 'react';
 
 interface SettingsHeaderProps {
@@ -27,7 +28,7 @@ const SettingsHeader = ({
       {/* Cover Photo */}
       <div className="h-48 md:h-64 rounded-3xl overflow-hidden relative group bg-accent/20 border border-border">
         {coverImage ? (
-          <img src={coverImage} alt="Cover" className="w-full h-full object-cover" />
+          <Image fill src={coverImage} alt="Cover" className="object-cover" />
         ) : (
           <div className="w-full h-full bg-gradient-to-br from-primary/10 via-accent/5 to-primary/5 flex items-center justify-center">
             <ImageIcon className="w-12 h-12 text-muted-foreground/20" />
@@ -57,7 +58,7 @@ const SettingsHeader = ({
         <div className="relative group self-center md:self-auto">
           <div className="w-28 h-28 md:w-40 md:h-40 rounded-full border-4 border-background bg-card overflow-hidden shadow-2xl relative">
             {profileImage ? (
-              <img src={profileImage} alt="Profile" className="w-full h-full object-cover" />
+              <Image fill src={profileImage} alt="Profile" className="object-cover" />
             ) : (
               <div className="w-full h-full bg-primary/10 flex items-center justify-center">
                 <User className="w-12 h-12 md:w-16 md:h-16 text-primary" />

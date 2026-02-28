@@ -13,8 +13,18 @@ const MOCK_USERS = [
   { id: 5, name: 'Edward Norton', email: 'edward@example.com', role: 'Editor', status: 'Pending', lastActive: '5 hours ago' },
 ];
 
+interface User {
+  id: number | string;
+  name: string;
+  email: string;
+  role: string;
+  status: string;
+  lastActive: string;
+}
+
 export default function UserTable() {
   const { data: usersResponse, isLoading, error } = useGetUsersQuery(undefined);
+  if (error) console.error('Fetch users error:', error);
   const tableRef = useRef<HTMLTableElement>(null);
 
   // Use mock data if API fails or returns nothing (for demo purposes)
@@ -55,7 +65,7 @@ export default function UserTable() {
           </tr>
         </thead>
         <tbody className="divide-y divide-border">
-          {users.map((user: any) => (
+          {users.map((user: User) => (
             <tr key={user.id} className="hover:bg-secondary/30 transition-colors group">
               <td className="px-6 py-4">
                 <div className="flex items-center space-x-3">
@@ -79,8 +89,8 @@ export default function UserTable() {
               </td>
               <td className="px-6 py-4">
                 <span className={`px-2.5 py-1 rounded-full text-xs font-semibold ${user.status === 'Active' ? 'bg-emerald-100 text-emerald-700' :
-                    user.status === 'Inactive' ? 'bg-muted text-muted-foreground' :
-                      'bg-amber-100 text-amber-700'
+                  user.status === 'Inactive' ? 'bg-muted text-muted-foreground' :
+                    'bg-amber-100 text-amber-700'
                   }`}>
                   {user.status}
                 </span>

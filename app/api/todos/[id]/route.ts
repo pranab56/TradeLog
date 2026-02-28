@@ -1,4 +1,4 @@
-import { verifyToken } from '@/lib/auth-utils';
+import { TokenPayload, verifyToken } from '@/lib/auth-utils';
 import { getUserDb } from '@/lib/mongodb-client';
 import { ObjectId } from 'mongodb';
 import { cookies } from 'next/headers';
@@ -17,7 +17,7 @@ export async function PATCH(
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const decoded: any = verifyToken(token);
+    const decoded = verifyToken(token) as TokenPayload | null;
     if (!decoded || !decoded.dbName) {
       return NextResponse.json({ error: 'Invalid session' }, { status: 401 });
     }
@@ -28,7 +28,7 @@ export async function PATCH(
     const db = await getUserDb(decoded.dbName);
     const todosCollection = db.collection('todos');
 
-    const updateData: any = {};
+    const updateData: Record<string, unknown> = {};
     if (completed !== undefined) updateData.completed = completed;
     if (task !== undefined) updateData.task = task;
 
@@ -38,9 +38,10 @@ export async function PATCH(
     );
 
     return NextResponse.json({ success: true });
-  } catch (error: any) {
-    console.error('Update todo error:', error);
-    return NextResponse.json({ error: error.message }, { status: 500 });
+  } catch (err: unknown) {
+    console.error('Update todo error:', err);
+    const message = err instanceof Error ? err.message : 'Internal Server Error';
+    return NextResponse.json({ error: message }, { status: 500 });
   }
 }
 
@@ -57,7 +58,7 @@ export async function DELETE(
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const decoded: any = verifyToken(token);
+    const decoded = verifyToken(token) as TokenPayload | null;
     if (!decoded || !decoded.dbName) {
       return NextResponse.json({ error: 'Invalid session' }, { status: 401 });
     }
@@ -68,8 +69,9 @@ export async function DELETE(
     await todosCollection.deleteOne({ _id: new ObjectId(id) });
 
     return NextResponse.json({ success: true });
-  } catch (error: any) {
-    console.error('Delete todo error:', error);
-    return NextResponse.json({ error: error.message }, { status: 500 });
+  } catch (err: unknown) {
+    console.error('Delete todo error:', err);
+    const message = err instanceof Error ? err.message : 'Internal Server Error';
+    return NextResponse.json({ error: message }, { status: 500 });
   }
 }

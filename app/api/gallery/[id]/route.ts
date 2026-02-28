@@ -1,4 +1,4 @@
-import { verifyToken } from '@/lib/auth-utils';
+import { TokenPayload, verifyToken } from '@/lib/auth-utils';
 import { getUserDb } from '@/lib/mongodb-client';
 import { unlink } from 'fs/promises';
 import { ObjectId } from 'mongodb';
@@ -19,7 +19,7 @@ export async function DELETE(
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const decoded: any = verifyToken(token);
+    const decoded = verifyToken(token) as TokenPayload | null;
     if (!decoded || !decoded.dbName) {
       return NextResponse.json({ error: 'Invalid session' }, { status: 401 });
     }
@@ -45,8 +45,9 @@ export async function DELETE(
     await galleryCollection.deleteOne({ _id: new ObjectId(id) });
 
     return NextResponse.json({ success: true });
-  } catch (error: any) {
-    console.error('Delete gallery error:', error);
-    return NextResponse.json({ error: error.message }, { status: 500 });
+  } catch (err: unknown) {
+    console.error('Delete gallery error:', err);
+    const message = err instanceof Error ? err.message : 'Internal Server Error';
+    return NextResponse.json({ error: message }, { status: 500 });
   }
 }

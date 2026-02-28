@@ -38,8 +38,12 @@ export default function LoginPage() {
       // Success logic - in a real app, you'd update global state here
       // For now, redirect to dashboard
       router.push('/');
-    } catch (err: any) {
-      setError(err.message);
+    } catch (err: unknown) {
+      if (err instanceof Error) {
+        setError(err.message);
+      } else {
+        setError('An unexpected error occurred');
+      }
     } finally {
       setLoading(false);
     }

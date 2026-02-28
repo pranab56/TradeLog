@@ -1,4 +1,4 @@
-import { verifyToken } from '@/lib/auth-utils';
+import { TokenPayload, verifyToken } from '@/lib/auth-utils';
 import { getUserDb } from '@/lib/mongodb-client';
 import { cookies } from 'next/headers';
 import { NextResponse } from 'next/server';
@@ -12,7 +12,7 @@ export async function GET() {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const decoded: any = verifyToken(token);
+    const decoded = verifyToken(token) as TokenPayload | null;
     if (!decoded || !decoded.dbName) {
       return NextResponse.json({ error: 'Invalid session' }, { status: 401 });
     }
@@ -21,9 +21,10 @@ export async function GET() {
     const todos = await db.collection('todos').find({}).sort({ createdAt: -1 }).toArray();
 
     return NextResponse.json(todos);
-  } catch (error: any) {
-    console.error('Fetch todos error:', error);
-    return NextResponse.json({ error: error.message }, { status: 500 });
+  } catch (err: unknown) {
+    console.error('Fetch todos error:', err);
+    const message = err instanceof Error ? err.message : 'Internal Server Error';
+    return NextResponse.json({ error: message }, { status: 500 });
   }
 }
 
@@ -36,7 +37,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const decoded: any = verifyToken(token);
+    const decoded = verifyToken(token) as TokenPayload | null;
     if (!decoded || !decoded.dbName) {
       return NextResponse.json({ error: 'Invalid session' }, { status: 401 });
     }
@@ -60,8 +61,9 @@ export async function POST(request: Request) {
     const result = await todosCollection.insertOne(newTodo);
 
     return NextResponse.json({ ...newTodo, _id: result.insertedId }, { status: 201 });
-  } catch (error: any) {
-    console.error('Create todo error:', error);
-    return NextResponse.json({ error: error.message }, { status: 500 });
+  } catch (err: unknown) {
+    console.error('Create todo error:', err);
+    const message = err instanceof Error ? err.message : 'Internal Server Error';
+    return NextResponse.json({ error: message }, { status: 500 });
   }
 }

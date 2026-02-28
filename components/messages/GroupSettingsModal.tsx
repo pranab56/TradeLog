@@ -21,7 +21,13 @@ import { toast } from 'sonner';
 interface GroupSettingsModalProps {
   isOpen: boolean;
   onClose: () => void;
-  conversation: any;
+  conversation: {
+    _id: string;
+    name?: string;
+    description?: string;
+    groupImage?: string | null;
+    participants: { _id: string }[];
+  } | null;
   onUpdate: () => void;
 }
 
@@ -78,7 +84,8 @@ export default function GroupSettingsModal({
 
     try {
       setLoading(true);
-      const res = await axios.patch('/api/conversations', {
+      if (!conversation) return;
+      await axios.patch('/api/conversations', {
         conversationId: conversation._id,
         type: 'group_update',
         name: name.trim(),
@@ -93,16 +100,17 @@ export default function GroupSettingsModal({
           name: name.trim(),
           description: description.trim(),
           groupImage,
-          participants: conversation.participants.map((p: any) => p._id)
+          participants: conversation.participants.map((p: { _id: string }) => p._id)
         });
       }
 
       toast.success('Group settings updated');
       onUpdate();
       onClose();
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('Update group error', err);
-      toast.error(err.response?.data?.error || 'Failed to update group');
+      const message = err instanceof axios.AxiosError ? err.response?.data?.error : 'Failed to update group';
+      toast.error(message);
     } finally {
       setLoading(false);
     }

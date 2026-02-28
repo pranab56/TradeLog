@@ -30,7 +30,7 @@ export async function POST(req: Request) {
 
     // Include the isolated database name in the token
     const token = generateToken({
-      id: user._id,
+      id: user._id.toString(),
       email: user.email,
       name: user.name,
       dbName: user.dbName // This is the key for isolated data management
@@ -39,7 +39,7 @@ export async function POST(req: Request) {
     const response = NextResponse.json({
       message: 'Login successful',
       user: {
-        id: user._id,
+        id: user._id.toString(),
         name: user.name,
         email: user.email,
         dbName: user.dbName
@@ -56,8 +56,8 @@ export async function POST(req: Request) {
 
     return response;
 
-  } catch (error) {
-    console.error('Login error:', error);
+  } catch (err: unknown) {
+    console.error('Login error:', err);
     return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });
   }
 }

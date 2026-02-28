@@ -3,6 +3,7 @@
 import { Button } from '@/components/ui/button';
 import { GalleryItem as GalleryItemType } from '@/features/gallery/galleryApi';
 import { Download, Image as ImageIcon, Play, Trash2, Video as VideoIcon } from 'lucide-react';
+import Image from 'next/image';
 
 interface GalleryItemProps {
   item: GalleryItemType;
@@ -21,10 +22,11 @@ export default function GalleryItem({ item, onPreview, onDelete, onDownload, for
       {/* Media Component */}
       <div className="aspect-square relative flex items-center justify-center bg-black">
         {item.type === 'image' ? (
-          <img
+          <Image
+            fill
             src={item.url}
             alt={item.fileName}
-            className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
+            className="object-cover transition-transform duration-700 group-hover:scale-110"
           />
         ) : (
           <div className="w-full h-full relative">

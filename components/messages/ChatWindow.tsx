@@ -28,7 +28,7 @@ import {
   Trash2
 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import InfiniteScroll from 'react-infinite-scroll-component';
 import { toast } from 'sonner';
 import CallOverlay from './CallOverlay';
@@ -38,30 +38,86 @@ import MessageItem from './MessageItem';
 
 
 
+interface Participant {
+  _id: string;
+  name: string;
+  profileImage?: string;
+  onlineStatus?: string;
+}
+
+interface Message {
+  _id: string;
+  conversationId: string;
+  senderId: string | { _id: string; name: string; profileImage?: string };
+  content: string;
+  messageType?: string;
+  mediaUrl?: string;
+  replyTo?: {
+    _id: string;
+    content: string;
+    messageType: string;
+    senderName: string;
+  } | string | null;
+  reactions?: { userId: string; emoji: string; userName?: string }[];
+  isPinned?: boolean;
+  isEdited?: boolean;
+  isDeleted?: boolean;
+  status?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+interface Conversation {
+  _id: string;
+  name?: string;
+  description?: string;
+  isGroup: boolean;
+  participants: Participant[];
+  lastMessage?: Message;
+  unreadCount?: number;
+  isMuted?: boolean;
+  isPinned?: boolean;
+  isBlockedByMe?: boolean;
+  isBlocked?: boolean;
+  groupImage?: string;
+  updatedAt: string;
+  pinnedMessageId?: string | null;
+}
+
+interface User {
+  id: string;
+  _id?: string;
+  name: string;
+  email: string;
+  profileImage?: string;
+}
+
 interface ChatWindowProps {
-  conversation: any;
-  currentUser: any;
-  onMessageSent?: (msg: any) => void;
+  conversation: Conversation;
+  currentUser: User | null;
+  onMessageSent?: (msg: Message) => void;
   onBack?: () => void;
 }
 
 // Normalize any ID (string, ObjectId, {$oid:...}) to a plain string
-const toStr = (id: any): string => {
+const toStr = (id: string | { $oid: string } | { toString: () => string } | undefined | null): string => {
   if (!id) return '';
   if (typeof id === 'string') return id;
-  if (typeof id === 'object' && id.$oid) return id.$oid;
-  if (typeof id === 'object' && id.toString) return id.toString();
+  if (typeof id === 'object') {
+    if ('$oid' in id) return id.$oid;
+    if (typeof id.toString === 'function') return id.toString();
+  }
   return String(id);
 };
 
 export default function ChatWindow({ conversation, currentUser, onMessageSent, onBack }: ChatWindowProps) {
   const { socket, isConnected } = useSocket();
   const convId = toStr(conversation._id);
-  const [messages, setMessages] = useState<any[]>([]);
+  const [messages, setMessages] = useState<Message[]>([]);
   const [loading, setLoading] = useState(true);
-  const [typingUser, setTypingUser] = useState<any>(null);
-  const [replyingTo, setReplyingTo] = useState<any>(null);
-  const [editingMessage, setEditingMessage] = useState<any>(null);
+  const [typingUser, setTypingUser] = useState<{ id: string; name: string } | null>(null);
+  const [replyingTo, setReplyingTo] = useState<Message | null>(null);
+  const [editingMessage, setEditingMessage] = useState<Message | null>(null);
   const [isCalling, setIsCalling] = useState(false);
   const [showDeleteChatModal, setShowDeleteChatModal] = useState(false);
   const [showGroupSettings, setShowGroupSettings] = useState(false);
@@ -69,15 +125,31 @@ export default function ChatWindow({ conversation, currentUser, onMessageSent, o
   const router = useRouter();
 
   const otherParticipant = !conversation.isGroup
-    ? conversation.participants.find((p: any) => p._id !== currentUser?.id)
+    ? conversation.participants.find((p: Participant) => toStr(p._id) !== toStr(currentUser?.id || currentUser?._id))
     : null;
 
   const title = conversation.isGroup ? conversation.name : otherParticipant?.name;
   const image = conversation.isGroup ? conversation.groupImage : otherParticipant?.profileImage;
 
+  const fetchMessages = useCallback(async () => {
+    try {
+      setLoading(true);
+      const res = await axios.get(`/api/messages?conversationId=${conversation._id}`);
+      setMessages(res.data.messages);
+
+      // Mark as read
+      await axios.post('/api/conversations/read', { conversationId: conversation._id });
+      if (socket) socket.emit('mark-read', { conversationId: conversation._id, userId: currentUser?.id });
+    } catch (err) {
+      console.error('Fetch messages error', err);
+    } finally {
+      setLoading(false);
+    }
+  }, [conversation._id, currentUser?.id, socket]);
+
   useEffect(() => {
     fetchMessages();
-  }, [convId]);
+  }, [convId, fetchMessages]);
 
   useEffect(() => {
     if (!socket) return;
@@ -94,33 +166,33 @@ export default function ChatWindow({ conversation, currentUser, onMessageSent, o
     // Re-join on every (re)connect
     socket.on('connect', joinRoom);
 
-    const onReceiveMessage = (message: any) => {
+    const onReceiveMessage = (message: Message) => {
       if (toStr(message.conversationId) === convId) {
         setMessages(prev => [...prev, message]);
       }
     };
 
-    const onUserTyping = (data: any) => {
-      if (toStr(data.conversationId) === convId && toStr(data.userId) !== toStr(currentUser?.id)) {
-        setTypingUser(data.userName);
+    const onUserTyping = (data: { conversationId: string; userId: string; userName: string }) => {
+      if (toStr(data.conversationId) === convId && toStr(data.userId) !== toStr(currentUser?.id || currentUser?._id)) {
+        setTypingUser({ id: data.userId, name: data.userName });
       }
     };
 
-    const onUserStopTyping = (data: any) => {
+    const onUserStopTyping = (data: { conversationId: string; userId: string }) => {
       if (toStr(data.conversationId) === convId) {
         setTypingUser(null);
       }
     };
 
-    const onMessageEdited = (updatedMessage: any) => {
+    const onMessageEdited = (updatedMessage: Message) => {
       setMessages(prev => prev.map(m => toStr(m._id) === toStr(updatedMessage._id) ? updatedMessage : m));
     };
 
-    const onMessageDeleted = (data: any) => {
+    const onMessageDeleted = (data: { messageId: string }) => {
       setMessages(prev => prev.filter(m => toStr(m._id) !== toStr(data.messageId)));
     };
 
-    const onMessageReacted = (updatedMessage: any) => {
+    const onMessageReacted = (updatedMessage: Message) => {
       setMessages(prev => prev.map(m => toStr(m._id) === toStr(updatedMessage._id) ? updatedMessage : m));
 
       // Play sound when someone reacts
@@ -131,12 +203,13 @@ export default function ChatWindow({ conversation, currentUser, onMessageSent, o
       playReactSound();
     };
 
-    const onMessageRead = (data: any) => {
+    const onMessageRead = (data: { conversationId: string; userId: string }) => {
       if (toStr(data.conversationId) === convId) {
         setMessages(prev => prev.map(m => {
-          // If the message was sent by the current user and the other person read it, mark it as read
-          if (toStr(m.senderId._id) === toStr(currentUser?.id) && toStr(currentUser?.id) !== toStr(data.userId)) {
-            return { ...m, status: 'read' };
+          const senderId = typeof m.senderId === 'object' ? toStr(m.senderId._id) : toStr(m.senderId);
+          const myId = toStr(currentUser?.id || currentUser?._id);
+          if (senderId === myId && myId !== toStr(data.userId)) {
+            return { ...m, status: 'read' as const };
           }
           return m;
         }));
@@ -161,39 +234,20 @@ export default function ChatWindow({ conversation, currentUser, onMessageSent, o
       socket.off('message-reacted', onMessageReacted);
       socket.off('message-read', onMessageRead);
     };
-  }, [convId, socket, isConnected]);
+  }, [convId, socket, isConnected, currentUser?.id, currentUser?._id]);
 
-  useEffect(() => {
-    scrollToBottom();
-  }, [messages, typingUser]);
-
-  const fetchMessages = async () => {
-    try {
-      setLoading(true);
-      const res = await axios.get(`/api/messages?conversationId=${conversation._id}`);
-      setMessages(res.data.messages);
-
-      // Mark as read
-      await axios.post('/api/conversations/read', { conversationId: conversation._id });
-      if (socket) socket.emit('mark-read', { conversationId: conversation._id, userId: currentUser?.id });
-    } catch (err) {
-      console.error('Fetch messages error', err);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const scrollToBottom = (behavior: 'smooth' | 'auto' = 'smooth') => {
+  const scrollToBottom = useCallback((behavior: 'smooth' | 'auto' = 'smooth') => {
     if (scrollRef.current) {
-      // With flex-col-reverse layout, the bottom is automatically maintained
-      // and scrollTo({top: 0}) might not be necessary or behaves differently,
-      // but if we need to ensure we are at the bottom:
       scrollRef.current.scrollTo({
         top: 0,
         behavior
       });
     }
-  };
+  }, []);
+
+  useEffect(() => {
+    scrollToBottom();
+  }, [messages, typingUser, scrollToBottom]);
 
   const scrollToMessage = (msgId: string) => {
     const el = document.getElementById(`msg-${msgId}`);
@@ -242,17 +296,17 @@ export default function ChatWindow({ conversation, currentUser, onMessageSent, o
         mediaUrl,
         replyTo: replyingTo?._id
       });
-      // ... same as before
       const newMessage = res.data.message;
 
       if (replyingTo) {
         newMessage.replyTo = {
           _id: replyingTo._id,
           content: replyingTo.content,
-          messageType: replyingTo.messageType,
-          senderName: replyingTo.senderId.name
+          messageType: replyingTo.messageType || 'text',
+          senderName: (typeof replyingTo.senderId === 'object' ? replyingTo.senderId.name : 'User')
         };
       }
+      
 
       setMessages(prev => [...prev, newMessage]);
       setReplyingTo(null);
@@ -261,7 +315,7 @@ export default function ChatWindow({ conversation, currentUser, onMessageSent, o
       if (socket) {
         socket.emit('send-message', {
           ...newMessage,
-          participants: conversation.participants.map((p: any) => p._id)
+          participants: conversation.participants.map((p: Participant) => p._id)
         });
       }
     } catch (err) {
@@ -271,7 +325,6 @@ export default function ChatWindow({ conversation, currentUser, onMessageSent, o
 
   const handleReact = async (messageId: string, emoji: string) => {
     try {
-      // Optimistic or immediate sound
       const audio = new Audio('/audio/audio.mp3');
       audio.play().catch(e => console.log('Audio playback prevented by browser:', e));
 
@@ -316,9 +369,10 @@ export default function ChatWindow({ conversation, currentUser, onMessageSent, o
         });
         return newMessages;
       });
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('Pin error', err);
-      toast.error(err.response?.data?.error || 'Failed to pin message');
+      const errorMessage = (err as { response?: { data?: { error?: string } } })?.response?.data?.error || 'Failed to pin message';
+      toast.error(errorMessage);
     }
   };
 
@@ -341,7 +395,7 @@ export default function ChatWindow({ conversation, currentUser, onMessageSent, o
       if (type === 'all' && socket) {
         socket.emit('delete-conversation', {
           conversationId: conversation._id,
-          participants: conversation.participants.map((p: any) => p._id)
+          participants: conversation.participants.map((p: Participant) => p._id)
         });
       }
 
@@ -468,7 +522,7 @@ export default function ChatWindow({ conversation, currentUser, onMessageSent, o
                   <span className="w-1.5 h-1.5 rounded-full bg-muted-foreground/40 animate-bounce [animation-delay:0.2s]" />
                   <span className="w-1.5 h-1.5 rounded-full bg-muted-foreground/40 animate-bounce [animation-delay:0.4s]" />
                 </div>
-                <span>{typingUser} is typing...</span>
+                <span>{typingUser.name} is typing...</span>
               </div>
             )}
 
@@ -483,13 +537,13 @@ export default function ChatWindow({ conversation, currentUser, onMessageSent, o
               >
                 <MessageItem
                   message={msg}
-                  isOwn={toStr(msg.senderId._id) === currentUser?.id || toStr(msg.senderId) === currentUser?.id}
-                  showAvatar={index === 0 || toStr(reversedArr[index - 1]?.senderId._id) !== toStr(msg.senderId._id)}
+                  isOwn={toStr(typeof msg.senderId === 'object' ? msg.senderId._id : msg.senderId) === toStr(currentUser?.id || currentUser?._id)}
+                  showAvatar={index === 0 || toStr(typeof reversedArr[index - 1]?.senderId === 'object' ? (reversedArr[index - 1].senderId as { _id: string })._id : reversedArr[index - 1]?.senderId) !== toStr(typeof msg.senderId === 'object' ? (msg.senderId as { _id: string })._id : msg.senderId)}
                   onReply={() => setReplyingTo(msg)}
                   onReact={(emoji) => handleReact(msg._id, emoji)}
                   onEdit={() => setEditingMessage(msg)}
                   onDelete={() => handleDelete(msg._id)}
-                  onPin={() => handlePin(msg._id, msg.isPinned)}
+                  onPin={() => handlePin(msg._id, !!msg.isPinned)}
                   onReplyClick={scrollToMessage}
                 />
               </motion.div>
@@ -535,7 +589,7 @@ export default function ChatWindow({ conversation, currentUser, onMessageSent, o
       <CallOverlay
         isOpen={isCalling}
         onHangup={() => setIsCalling(false)}
-        user={otherParticipant}
+        user={otherParticipant || null}
       />
 
       <Dialog open={showDeleteChatModal} onOpenChange={setShowDeleteChatModal}>

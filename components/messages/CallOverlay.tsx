@@ -14,10 +14,15 @@ import {
 } from 'lucide-react';
 import { useEffect, useState } from 'react';
 
+interface UserProfile {
+  name?: string;
+  profileImage?: string;
+}
+
 interface CallOverlayProps {
   isOpen: boolean;
   onHangup: () => void;
-  user: any;
+  user: UserProfile | null;
   isIncoming?: boolean;
   onAccept?: () => void;
 }
@@ -28,7 +33,7 @@ export default function CallOverlay({ isOpen, onHangup, user, isIncoming, onAcce
   const [duration, setDuration] = useState(0);
 
   useEffect(() => {
-    let interval: any;
+    let interval: ReturnType<typeof setInterval> | undefined;
     if (isOpen && !isIncoming) {
       interval = setInterval(() => {
         setDuration(prev => prev + 1);

@@ -29,13 +29,71 @@ import { toast } from 'sonner';
 
 dayjs.extend(relativeTime);
 
+interface Participant {
+  _id: string;
+  name: string;
+  profileImage?: string;
+  onlineStatus?: string;
+}
+
+interface Message {
+  _id: string;
+  conversationId: string;
+  senderId: string | { _id: string; name: string; profileImage?: string };
+  content: string;
+  messageType?: string;
+  mediaUrl?: string;
+  replyTo?: {
+    _id: string;
+    content: string;
+    messageType: string;
+    senderName: string;
+  } | string | null;
+  reactions?: { userId: string; emoji: string; userName?: string }[];
+  isPinned?: boolean;
+  isEdited?: boolean;
+  isDeleted?: boolean;
+  status?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+interface Conversation {
+  _id: string;
+  name?: string;
+  description?: string;
+  isGroup: boolean;
+  participants: Participant[];
+  lastMessage?: Message;
+  unreadCount?: number;
+  isMuted?: boolean;
+  isPinned?: boolean;
+  isBlockedByMe?: boolean;
+  isBlocked?: boolean;
+  groupImage?: string;
+  updatedAt: string;
+  pinnedMessageId?: string | null;
+}
+
+interface User {
+  id: string;
+  _id?: string;
+  name: string;
+}
+
 interface ChatSidebarProps {
-  conversations: any[];
-  requests: any[];
-  onSelect: (conv: any) => void;
+  conversations: Conversation[];
+  requests: {
+    _id: string;
+    senderId: { _id: string; name: string; profileImage?: string };
+    receiverId: string;
+    status: string;
+    createdAt: string;
+  }[];
+  onSelect: (conv: Conversation) => void;
   selectedId?: string;
   loading: boolean;
-  currentUser: any;
+  currentUser: User | null;
   onConversationCreated: () => void;
   isConnected: boolean;
 }
@@ -57,17 +115,17 @@ export default function ChatSidebar({
   const [searchQuery, setSearchQuery] = useState('');
   const [activeTab, setActiveTab] = useState<'all' | 'blocked'>('all');
 
-  const handleUpdateConversation = async (conversationId: string, data: any) => {
+  const handleUpdateConversation = async (conversationId: string, data: Partial<Conversation>) => {
     try {
       await axios.patch('/api/conversations', { conversationId, ...data });
       toast.success('Conversation updated');
       onConversationCreated();
-    } catch (err) {
+    } catch {
       toast.error('Failed to update conversation');
     }
   };
 
-  const handleDeleteConversation = async (conv: any) => {
+  const handleDeleteConversation = async (conv: Conversation) => {
     if (!confirm('Are you sure you want to delete this conversation and all its messages?')) return;
     try {
       await axios.delete(`/api/conversations?conversationId=${conv._id}`);
@@ -75,13 +133,13 @@ export default function ChatSidebar({
       if (socket) {
         socket.emit('delete-conversation', {
           conversationId: conv._id,
-          participants: [currentUser.id] // Only notify my own tabs
+          participants: [currentUser?.id] // Only notify my own tabs
         });
       }
 
       toast.success('Conversation deleted');
       onConversationCreated();
-    } catch (err) {
+    } catch {
       toast.error('Failed to delete conversation');
     }
   };
@@ -95,7 +153,7 @@ export default function ChatSidebar({
       if (conv.isGroup) {
         return conv.name?.toLowerCase().includes(searchQuery.toLowerCase());
       }
-      const otherParticipant = conv.participants.find((p: any) => p._id !== currentUser?.id);
+      const otherParticipant = conv.participants.find((p: Participant) => p._id !== currentUser?.id);
       return otherParticipant?.name?.toLowerCase().includes(searchQuery.toLowerCase());
     })
     .sort((a, b) => {
@@ -208,14 +266,14 @@ export default function ChatSidebar({
           ) : filteredConversations.length > 0 ? (
             filteredConversations.map((conv) => {
               const otherParticipant = !conv.isGroup
-                ? conv.participants.find((p: any) => p._id !== currentUser?.id)
+                ? conv.participants.find((p: Participant) => p._id !== currentUser?.id)
                 : null;
 
               const title = conv.isGroup ? conv.name : otherParticipant?.name;
               const image = conv.isGroup ? conv.groupImage : otherParticipant?.profileImage;
 
               return (
-                <div className="relative group w-full">
+                <div key={conv._id} className="relative group w-full">
                   <button
                     onClick={() => onSelect(conv)}
                     className={cn(
@@ -241,12 +299,12 @@ export default function ChatSidebar({
                     <div className="flex-1 min-w-0">
                       <div className="flex justify-between items-start mb-0.5">
                         <div className="flex items-center gap-1.5 truncate">
-                          <span className={cn("truncate", (conv.unreadCount > 0) ? "font-bold text-foreground" : "font-semibold")}>{title}</span>
+                          <span className={cn("truncate", (conv.unreadCount && conv.unreadCount > 0) ? "font-bold text-foreground" : "font-semibold")}>{title}</span>
                           {conv.isPinned && <PinIcon className="w-3 h-3 text-primary fill-primary" />}
                           {conv.isMuted && <VolumeX className="w-3 h-3 text-muted-foreground" />}
                         </div>
                         {conv.lastMessage && (
-                          <span className={cn("text-[11px] whitespace-nowrap ml-2", (conv.unreadCount > 0) ? "font-bold text-primary" : "text-muted-foreground")}>
+                          <span className={cn("text-[11px] whitespace-nowrap ml-2", (conv.unreadCount && conv.unreadCount > 0) ? "font-bold text-primary" : "text-muted-foreground")}>
                             {dayjs(conv.updatedAt).format('HH:mm')}
                           </span>
                         )}
@@ -254,18 +312,18 @@ export default function ChatSidebar({
                       <div className="flex justify-between items-center gap-2">
                         <p className={cn(
                           "text-xs line-clamp-1 flex-1 text-left break-all",
-                          (conv.unreadCount > 0) ? "font-semibold text-foreground font-medium" : "text-muted-foreground"
+                          (conv.unreadCount && conv.unreadCount > 0) ? "font-semibold text-foreground font-medium" : "text-muted-foreground"
                         )}>
                           {conv.lastMessage ? (
                             <>
-                              {(String(conv.lastMessage.senderId) === String(currentUser?.id) || String(conv.lastMessage.senderId?._id) === String(currentUser?.id)) && "You: "}
+                              {(String(typeof conv.lastMessage.senderId === 'object' ? conv.lastMessage.senderId._id : conv.lastMessage.senderId) === String(currentUser?.id)) && "You: "}
                               {conv.lastMessage.content}
                             </>
                           ) : (
                             <span className="italic">No messages yet</span>
                           )}
                         </p>
-                        {conv.unreadCount > 0 && (
+                        {conv.unreadCount && conv.unreadCount > 0 && (
                           <span className="bg-primary text-primary-foreground text-[10px] font-bold px-1.5 py-0.5 rounded-full flex-shrink-0 animate-in zoom-in">
                             {conv.unreadCount}
                           </span>
@@ -303,7 +361,7 @@ export default function ChatSidebar({
                                 participants: [otherParticipant._id],
                                 action: 'block',
                                 isBlocked: !conv.isBlockedByMe,
-                                blockedBy: currentUser.name
+                                blockedBy: currentUser?.name || 'User'
                               });
                             }
                           }}
@@ -334,7 +392,7 @@ export default function ChatSidebar({
       <SearchUsers
         isOpen={showSearch}
         onClose={() => setShowSearch(false)}
-        onSelect={(user) => {
+        onSelect={() => {
           setShowSearch(false);
           // Handle starting conversation
           onConversationCreated();

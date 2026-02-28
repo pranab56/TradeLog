@@ -39,8 +39,15 @@ const schema = z.object({
 });
 
 interface DailyRecordFormProps {
-  initialData?: any;
-  onSubmit: (data: any) => void;
+  initialData?: {
+    date?: string;
+    profit?: number;
+    loss?: number;
+    riskRewardRatio?: string;
+    notes?: string;
+    tags?: string[];
+  } | null;
+  onSubmit: (data: { date: string; profit: number; loss: number; riskRewardRatio: string; notes: string; tags: string[] }) => void;
   isLoading?: boolean;
 }
 
@@ -62,11 +69,11 @@ export default function DailyRecordForm({ initialData, onSubmit, isLoading }: Da
 
   const [isCalendarOpen, setIsCalendarOpen] = useState(false);
 
-  const selectedDateStr = watch('date');
-  const profitValue = watch('profit');
-  const lossValue = watch('loss');
+  const selectedDateStr = watch('date') as string;
+  const profitValue = watch('profit') as number;
+  const lossValue = watch('loss') as number;
 
-  const handleFormSubmit = (data: any) => {
+  const handleFormSubmit = (data: { date: string; profit: number; loss: number; riskRewardRatio: string; notes: string; tags: string }) => {
     const formattedData = {
       ...data,
       tags: data.tags ? data.tags.split(',').map((t: string) => t.trim()) : []

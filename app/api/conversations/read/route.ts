@@ -1,6 +1,6 @@
-import { verifyToken } from '@/lib/auth-utils';
+import { TokenPayload, verifyToken } from '@/lib/auth-utils';
 import { getDb } from '@/lib/mongodb-client';
-import { ObjectId } from 'mongodb';
+import { Document, ObjectId, UpdateFilter } from 'mongodb';
 import { cookies } from 'next/headers';
 import { NextResponse } from 'next/server';
 
@@ -10,7 +10,8 @@ export async function POST(req: Request) {
     const token = cookieStore.get('token')?.value;
     if (!token) return NextResponse.json({ error: 'Not authenticated' }, { status: 401 });
 
-    const decoded: any = verifyToken(token);
+    const decoded = verifyToken(token) as TokenPayload | null;
+    if (!decoded) return NextResponse.json({ error: 'Invalid token' }, { status: 401 });
     const { conversationId } = await req.json();
     if (!conversationId) return NextResponse.json({ error: 'Conversation ID required' }, { status: 400 });
 
@@ -31,8 +32,8 @@ export async function POST(req: Request) {
             userId: user._id,
             readAt: new Date()
           }
-        } as any
-      }
+        }
+      } as unknown as UpdateFilter<Document>
     );
 
     return NextResponse.json({ message: 'Marked as read' });

@@ -19,7 +19,7 @@ import {
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { cn } from '@/lib/utils';
 import dayjs from 'dayjs';
-import EmojiPicker from 'emoji-picker-react';
+import EmojiPicker, { Theme } from 'emoji-picker-react';
 import {
   Check,
   CheckCheck,
@@ -34,11 +34,25 @@ import {
   Smile,
   Trash2
 } from 'lucide-react';
+import Image from 'next/image';
 import { useState } from 'react';
 
 
 interface MessageItemProps {
-  message: any;
+  message: {
+    _id: string;
+    content: string;
+    messageType?: string;
+    mediaUrl?: string;
+    senderId: string | { _id: string; name: string; profileImage?: string };
+    replyTo?: { _id: string; content: string; messageType: string; senderName: string } | string | null;
+    isPinned?: boolean;
+    isEdited?: boolean;
+    isDeleted?: boolean;
+    createdAt: string;
+    status?: string;
+    reactions?: { userId: string; emoji: string; userName?: string }[];
+  };
   isOwn: boolean;
   showAvatar: boolean;
   onReply?: () => void;
@@ -97,9 +111,9 @@ export default function MessageItem({
     )}>
       {!isOwn && showAvatar ? (
         <Avatar className="w-8 h-8 flex-shrink-0 cursor-pointer">
-          <AvatarImage src={message.senderId.profileImage} />
+          <AvatarImage src={typeof message.senderId === 'object' ? message.senderId.profileImage : undefined} />
           <AvatarFallback className="bg-primary/10 text-xs text-primary font-bold">
-            {message.senderId.name?.charAt(0)}
+            {(typeof message.senderId === 'object' ? message.senderId.name : 'U')?.charAt(0)}
           </AvatarFallback>
         </Avatar>
       ) : (
@@ -112,7 +126,7 @@ export default function MessageItem({
       )}>
         {showAvatar && !isOwn && (
           <span className="text-[10px] text-muted-foreground ml-1 mb-1 font-medium">
-            {message.senderId.name}
+            {typeof message.senderId === 'object' ? message.senderId.name : 'Unknown User'}
           </span>
         )}
 
@@ -154,31 +168,43 @@ export default function MessageItem({
             message.isDeleted && "opacity-50 italic"
           )}>
             {/* Reply Context */}
-            {(message.replyTo && message.replyTo.senderName) && (
-              <div
-                onClick={() => onReplyClick?.(message.replyTo._id)}
-                className={cn(
-                  "mb-2 p-2 rounded-lg text-xs border-l-4 bg-black/5 flex flex-col gap-0.5 cursor-pointer hover:opacity-80 transition-opacity",
-                  isOwn ? "border-primary-foreground/50" : "border-primary/50"
-                )}
-              >
-                <span className="font-bold opacity-80">{message.replyTo.senderName}</span>
-                <p className="line-clamp-1 italic text-[11px]">
-                  {message.replyTo.messageType === 'text' ? message.replyTo.content : 'Image'}
-                </p>
-              </div>
-            )}
+            {(() => {
+              const reply = (message.replyTo && typeof message.replyTo === 'object')
+                ? message.replyTo as { _id: string; content: string; messageType: string; senderName: string }
+                : null;
+
+              if (!reply || !reply.senderName) return null;
+
+              return (
+                <div
+                  onClick={() => reply._id && onReplyClick?.(reply._id)}
+                  className={cn(
+                    "mb-2 p-2 rounded-lg text-xs border-l-4 bg-black/5 flex flex-col gap-0.5 cursor-pointer hover:opacity-80 transition-opacity",
+                    isOwn ? "border-primary-foreground/50" : "border-primary/50"
+                  )}
+                >
+                  <span className="font-bold opacity-80">{reply.senderName}</span>
+                  <p className="line-clamp-1 italic text-[11px]">
+                    {reply.messageType === 'text' ? reply.content : 'Image'}
+                  </p>
+                </div>
+              );
+            })()}
 
             {isText && <p className="leading-snug whitespace-pre-wrap">{message.content}</p>}
 
             {isImage && (
               <div className="flex flex-col gap-1.5">
-                <img
-                  src={message.mediaUrl}
-                  alt="Image"
-                  className="rounded-xl max-w-full h-auto object-cover max-h-80 transition-transform hover:scale-[1.02] cursor-pointer"
-                  onClick={() => setSelectedImage(message.mediaUrl)}
-                />
+                <div className="relative w-full min-h-[100px] h-auto rounded-xl overflow-hidden group/img">
+                  <Image
+                    src={message.mediaUrl || ''}
+                    alt="Image"
+                    width={500}
+                    height={300}
+                    className="w-full h-auto object-cover max-h-80 transition-transform hover:scale-[1.02] cursor-pointer"
+                    onClick={() => setSelectedImage(message.mediaUrl || null)}
+                  />
+                </div>
                 {message.content && message.content !== 'Photo' && message.content !== 'Sent an image' && (
                   <p className="leading-snug whitespace-pre-wrap text-[15px] px-1 pb-1 pt-1">{message.content}</p>
                 )}
@@ -234,7 +260,7 @@ export default function MessageItem({
                 "absolute -bottom-3 flex flex-wrap gap-1 z-20",
                 isOwn ? "left-0" : "right-0"
               )}>
-                {message.reactions.map((r: any, idx: number) => (
+                {message.reactions.map((r, idx) => (
                   <div
                     key={idx}
                     onClick={() => setShowReactorsModal(true)}
@@ -270,7 +296,7 @@ export default function MessageItem({
             <DialogTitle className="text-sm font-semibold">Message Reactions</DialogTitle>
           </DialogHeader>
           <div className="flex flex-col gap-2 mt-2 max-h-[300px] overflow-y-auto pr-1">
-            {message.reactions?.map((r: any, i: number) => (
+            {message.reactions?.map((r, i) => (
               <div key={i} className="flex items-center justify-between p-2 rounded-lg bg-muted/40">
                 <span className="text-sm font-medium">{r.userName || 'User'}</span>
                 <span className="text-xl">{r.emoji}</span>
@@ -288,10 +314,12 @@ export default function MessageItem({
           </DialogHeader>
           {selectedImage && (
             <div className="relative w-full h-[80vh] flex items-center justify-center group/modal">
-              <img
+              <Image
                 src={selectedImage}
                 alt="Zoomed"
-                className="max-w-full max-h-full object-contain"
+                fill
+                className="object-contain"
+                unoptimized
               />
               <div className="absolute top-4 right-14 flex gap-2 transition-opacity duration-300">
                 <Button
@@ -386,11 +414,11 @@ function MessageActions({
             </>
           ) : (
             <EmojiPicker
-              onEmojiClick={(emojiData: any) => {
+              onEmojiClick={(emojiData) => {
                 onReact?.(emojiData.emoji);
                 setOpen(false);
               }}
-              theme={'light' as any}
+              theme={Theme.LIGHT}
               width={300}
               height={350}
               previewConfig={{ showPreview: false }}

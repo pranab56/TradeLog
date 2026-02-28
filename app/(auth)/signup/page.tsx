@@ -12,9 +12,7 @@ export default function SignupPage() {
   const [error, setError] = useState('');
   const router = useRouter();
 
-  const containerRef = useRef(null);
   const formRef = useRef(null);
-  const infoRef = useRef(null);
 
 
 
@@ -38,8 +36,12 @@ export default function SignupPage() {
 
       // Success - redirect to verification
       router.push(`/verify?email=${encodeURIComponent(formData.email)}`);
-    } catch (err: any) {
-      setError(err.message);
+    } catch (err: unknown) {
+      if (err instanceof Error) {
+        setError(err.message);
+      } else {
+        setError('An unexpected error occurred');
+      }
     } finally {
       setLoading(false);
     }

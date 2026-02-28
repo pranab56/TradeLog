@@ -61,8 +61,8 @@ export default function GalleryPage() {
 
       try {
         await uploadToGallery(formData).unwrap();
-      } catch (error: any) {
-        console.error(`Upload failed for ${file.name}:`, error);
+      } catch (err: unknown) {
+        console.error(`Upload failed for ${file.name}:`, err);
         showMessage(`Failed to upload ${file.name}`, 'error');
       }
     }
@@ -81,7 +81,8 @@ export default function GalleryPage() {
     try {
       await deleteItem(id).unwrap();
       showMessage('Deleted successfully.', 'success');
-    } catch (error: any) {
+    } catch (err: unknown) {
+      console.error('Delete failed:', err);
       showMessage('Failed to delete.', 'error');
     }
   };

@@ -3,7 +3,7 @@
 import { ArrowLeft, Eye, EyeOff, Loader2, Lock } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { Suspense, useRef, useState } from 'react';
+import { Suspense, useState } from 'react';
 
 function ResetPasswordContent() {
   const [formData, setFormData] = useState({ otp: '', newPassword: '', confirmPassword: '' });
@@ -17,7 +17,7 @@ function ResetPasswordContent() {
   const searchParams = useSearchParams();
   const email = searchParams?.get('email');
 
-  const cardRef = useRef(null);
+
 
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -47,8 +47,12 @@ function ResetPasswordContent() {
       setTimeout(() => {
         router.push('/login');
       }, 3000);
-    } catch (err: any) {
-      setError(err.message);
+    } catch (err: unknown) {
+      if (err instanceof Error) {
+        setError(err.message);
+      } else {
+        setError('An unexpected error occurred');
+      }
     } finally {
       setLoading(false);
     }

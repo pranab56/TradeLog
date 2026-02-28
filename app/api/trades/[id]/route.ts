@@ -1,4 +1,4 @@
-import { verifyToken } from '@/lib/auth-utils';
+import { TokenPayload, verifyToken } from '@/lib/auth-utils';
 import { getUserDb } from '@/lib/mongodb-client';
 import { ObjectId } from 'mongodb';
 import { cookies } from 'next/headers';
@@ -15,7 +15,7 @@ export async function GET(
 
     if (!token) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
-    const decoded: any = verifyToken(token);
+    const decoded = verifyToken(token) as TokenPayload | null;
     if (!decoded || !decoded.dbName) return NextResponse.json({ error: 'Invalid session' }, { status: 401 });
 
     const db = await getUserDb(decoded.dbName);
@@ -25,8 +25,9 @@ export async function GET(
       return NextResponse.json({ error: 'Record not found' }, { status: 404 });
     }
     return NextResponse.json(record);
-  } catch (error: any) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : 'Internal Server Error';
+    return NextResponse.json({ error: message }, { status: 500 });
   }
 }
 
@@ -41,7 +42,7 @@ export async function PATCH(
 
     if (!token) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
-    const decoded: any = verifyToken(token);
+    const decoded = verifyToken(token) as TokenPayload | null;
     if (!decoded || !decoded.dbName) return NextResponse.json({ error: 'Invalid session' }, { status: 401 });
 
     const body = await request.json();
@@ -64,10 +65,10 @@ export async function PATCH(
     const db = await getUserDb(decoded.dbName);
 
     // Convert string numeric values to numbers if they exist
-    const updateData: any = { ...body, updatedAt: new Date() };
-    if (updateData.profit !== undefined) updateData.profit = parseFloat(updateData.profit);
-    if (updateData.loss !== undefined) updateData.loss = parseFloat(updateData.loss);
-    if (updateData.date) updateData.date = new Date(updateData.date);
+    const updateData: Record<string, unknown> = { ...body, updatedAt: new Date() };
+    if (typeof updateData.profit === 'string') updateData.profit = parseFloat(updateData.profit);
+    if (typeof updateData.loss === 'string') updateData.loss = parseFloat(updateData.loss);
+    if (typeof updateData.date === 'string') updateData.date = new Date(updateData.date);
     delete updateData.id; // Don't update the ID field itself
 
     const result = await db.collection('trades').findOneAndUpdate(
@@ -81,9 +82,10 @@ export async function PATCH(
     }
 
     return NextResponse.json(result);
-  } catch (error: any) {
-    console.error('Update trade error:', error);
-    return NextResponse.json({ error: error.message }, { status: 500 });
+  } catch (err: unknown) {
+    console.error('Update trade error:', err);
+    const message = err instanceof Error ? err.message : 'Internal Server Error';
+    return NextResponse.json({ error: message }, { status: 500 });
   }
 }
 
@@ -98,7 +100,7 @@ export async function DELETE(
 
     if (!token) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
-    const decoded: any = verifyToken(token);
+    const decoded = verifyToken(token) as TokenPayload | null;
     if (!decoded || !decoded.dbName) return NextResponse.json({ error: 'Invalid session' }, { status: 401 });
 
     const db = await getUserDb(decoded.dbName);
@@ -108,7 +110,8 @@ export async function DELETE(
       return NextResponse.json({ error: 'Record not found' }, { status: 404 });
     }
     return NextResponse.json({ message: 'Record deleted successfully' });
-  } catch (error: any) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : 'Internal Server Error';
+    return NextResponse.json({ error: message }, { status: 500 });
   }
 }

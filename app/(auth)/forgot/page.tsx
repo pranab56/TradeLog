@@ -10,8 +10,6 @@ export default function ForgotPasswordPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState(false);
-
-  const containerRef = useRef(null);
   const cardRef = useRef(null);
 
   useEffect(() => {
@@ -42,8 +40,12 @@ export default function ForgotPasswordPage() {
       }
 
       setSuccess(true);
-    } catch (err: any) {
-      setError(err.message);
+    } catch (err: unknown) {
+      if (err instanceof Error) {
+        setError(err.message);
+      } else {
+        setError('An unexpected error occurred');
+      }
     } finally {
       setLoading(false);
     }
@@ -58,7 +60,7 @@ export default function ForgotPasswordPage() {
 
           <h2 className="text-2xl md:text-3xl font-medium tracking-tight">Forgot Password?</h2>
           <p className="text-sm md:text-base text-muted-foreground">
-            Enter your email and we'll send you an OTP to reset your password securely.
+            Enter your email and we&apos;ll send you an OTP to reset your password securely.
           </p>
         </div>
 

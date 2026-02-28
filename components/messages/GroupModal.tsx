@@ -10,6 +10,7 @@ import {
   DialogTitle
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
+import { cn } from '@/lib/utils';
 import { useSocket } from '@/providers/socket-provider';
 import axios from 'axios';
 import { Check, Loader2, Users, X } from 'lucide-react';
@@ -19,19 +20,19 @@ interface GroupModalProps {
   isOpen: boolean;
   onClose: () => void;
   onCreated: () => void;
-  currentUser: any;
+  currentUser: { id: string; name: string } | null;
 }
 
 export default function GroupModal({ isOpen, onClose, onCreated, currentUser }: GroupModalProps) {
   const { socket } = useSocket();
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
-  const [selectedUsers, setSelectedUsers] = useState<any[]>([]);
+  const [selectedUsers, setSelectedUsers] = useState<{ _id: string; name: string; profileImage?: string }[]>([]);
   const [loading, setLoading] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
-  const [searchResults, setSearchResults] = useState<any[]>([]);
+  const [searchResults, setSearchResults] = useState<{ _id: string; name: string; profileImage?: string }[]>([]);
 
-  const toggleUser = (user: any) => {
+  const toggleUser = (user: { _id: string; name: string; profileImage?: string }) => {
     if (selectedUsers.find(u => u._id === user._id)) {
       setSelectedUsers(prev => prev.filter(u => u._id !== user._id));
     } else {
@@ -68,7 +69,7 @@ export default function GroupModal({ isOpen, onClose, onCreated, currentUser }: 
       if (socket) {
         socket.emit('new-conversation', {
           conversation: res.data.conversation,
-          participants: [...selectedUsers.map(u => u._id), currentUser.id]
+          participants: [...selectedUsers.map(u => u._id), currentUser?.id]
         });
       }
 
@@ -195,6 +196,3 @@ export default function GroupModal({ isOpen, onClose, onCreated, currentUser }: 
   );
 }
 
-function cn(...classes: any[]) {
-  return classes.filter(Boolean).join(' ');
-}

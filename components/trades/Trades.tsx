@@ -57,18 +57,29 @@ import { useEffect, useMemo, useState } from 'react';
 
 const ITEMS_PER_PAGE = 10;
 
+interface TradeRecord {
+  _id: string;
+  date: string;
+  profit: number;
+  loss: number;
+  riskRewardRatio: string;
+  notes?: string;
+  tags?: string[];
+  totalTrades: number;
+}
+
 export default function Trades() {
   const searchParams = useSearchParams();
   const action = searchParams?.get('action');
 
-  const { data: records = [], isLoading: isFetching, refetch } = useGetTradesQuery(undefined);
+  const { data: records = [], isLoading: isFetching } = useGetTradesQuery(undefined);
   const [addTrade, { isLoading: isAdding }] = useAddTradeMutation();
   const [updateTrade, { isLoading: isUpdating }] = useUpdateTradeMutation();
   const [deleteTrade] = useDeleteTradeMutation();
 
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [editingRecord, setEditingRecord] = useState<any>(null);
-  const [viewRecord, setViewRecord] = useState<any>(null);
+  const [editingRecord, setEditingRecord] = useState<TradeRecord | null>(null);
+  const [viewRecord, setViewRecord] = useState<TradeRecord | null>(null);
   const [search, setSearch] = useState('');
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
@@ -89,7 +100,7 @@ export default function Trades() {
 
     const searchTerm = search.toLowerCase();
 
-    return records.filter((r: any) => {
+    return records.filter((r: TradeRecord) => {
       const tradeDate = new Date(r.date);
       const day = tradeDate.getDate().toString().padStart(2, '0');
       const month = (tradeDate.getMonth() + 1).toString().padStart(2, '0');
@@ -131,12 +142,12 @@ export default function Trades() {
     try {
       await deleteTrade(deleteConfirmId).unwrap();
       setDeleteConfirmId(null);
-    } catch (error) {
+    } catch {
       alert('Failed to delete record');
     }
   };
 
-  const handleFormSubmit = async (formData: any) => {
+  const handleFormSubmit = async (formData: Partial<TradeRecord>) => {
     try {
       if (editingRecord) {
         await updateTrade({ id: editingRecord._id, ...formData }).unwrap();
@@ -145,8 +156,9 @@ export default function Trades() {
       }
       setIsModalOpen(false);
       setEditingRecord(null);
-    } catch (error: any) {
-      alert(error.data?.error || 'Failed to save record');
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : 'Failed to save record';
+      alert(message);
     }
   };
 
@@ -226,7 +238,7 @@ export default function Trades() {
                       </div>
                     </TableCell>
                   </TableRow>
-                ) : paginatedRecords.map((record: any) => {
+                ) : paginatedRecords.map((record: TradeRecord) => {
                   const net = (record.profit || 0) - (record.loss || 0);
                   const isProfit = net >= 0;
                   const isZeroRR = record.riskRewardRatio === '0:0';
@@ -260,16 +272,14 @@ export default function Trades() {
                         </span>
                       </TableCell>
                       <TableCell className="px-4 md:px-6 py-4 md:py-6">
-                        <div className="min-w-[150px] md:max-w-[280px] mb-2 md:mb-3">
-                          <p className="text-xs md:text-sm line-clamp-2 text-foreground font-normal leading-relaxed italic opacity-80">"{record.notes || 'No contextual notes.'}"</p>
-                        </div>
+                        <p className="text-xs md:text-sm line-clamp-2 text-foreground font-normal leading-relaxed italic opacity-80">&quot;{record.notes || 'No contextual notes.'}&quot;</p>
                         <div className="flex flex-wrap gap-1">
                           {record.tags?.slice(0, 3).map((tag: string) => (
                             <span key={tag} className="bg-muted/50 text-muted-foreground text-[8px] md:text-[9px] font-black px-2 py-0.5 md:px-2.5 md:py-1 rounded-lg border border-border uppercase tracking-widest whitespace-nowrap">
                               {tag}
                             </span>
                           ))}
-                          {record.tags?.length > 3 && (
+                          {record.tags && record.tags.length > 3 && (
                             <span className="text-[8px] font-bold text-muted-foreground">+{record.tags.length - 3}</span>
                           )}
                         </div>
@@ -372,7 +382,14 @@ export default function Trades() {
           </DialogHeader>
           <div className="p-4 md:p-6 max-h-[80vh] overflow-y-auto custom-scrollbar">
             <DailyRecordForm
-              initialData={editingRecord}
+              initialData={editingRecord ? {
+                date: editingRecord.date,
+                profit: editingRecord.profit,
+                loss: editingRecord.loss,
+                riskRewardRatio: editingRecord.riskRewardRatio,
+                notes: editingRecord.notes,
+                tags: editingRecord.tags
+              } : null}
               onSubmit={handleFormSubmit}
               isLoading={isAdding || isUpdating}
             />

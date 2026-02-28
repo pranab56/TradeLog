@@ -134,7 +134,7 @@ export default function TodoCelebration({ show }: TodoCelebrationProps) {
           </div>
 
           <p className="text-muted-foreground max-w-sm mx-auto leading-relaxed text-lg font-medium opacity-90 italic">
-            "Every single victory today is a testament to your professional edge. Keep this momentum alive!"
+            &quot;Every single victory today is a testament to your professional edge. Keep this momentum alive!&quot;
           </p>
 
           <div className="flex items-center justify-center gap-6 pt-8">

@@ -1,4 +1,4 @@
-import { verifyToken } from '@/lib/auth-utils';
+import { TokenPayload, verifyToken } from '@/lib/auth-utils';
 import { getDb } from '@/lib/mongodb-client';
 import { ObjectId } from 'mongodb';
 import { cookies } from 'next/headers';
@@ -113,7 +113,8 @@ export async function POST(req: Request) {
 
     if (!token) return NextResponse.json({ error: 'Not authenticated' }, { status: 401 });
 
-    const decoded: any = verifyToken(token);
+    const decoded = verifyToken(token) as TokenPayload | null;
+    if (!decoded) return NextResponse.json({ error: 'Invalid token' }, { status: 401 });
     const { conversationId, content, messageType, mediaUrl, replyTo } = await req.json();
 
     const db = await getDb('tradelog_main');
@@ -190,7 +191,8 @@ export async function PATCH(req: Request) {
     const token = cookieStore.get('token')?.value;
     if (!token) return NextResponse.json({ error: 'Not authenticated' }, { status: 401 });
 
-    const decoded: any = verifyToken(token);
+    const decoded = verifyToken(token) as TokenPayload | null;
+    if (!decoded) return NextResponse.json({ error: 'Invalid token' }, { status: 401 });
     const { messageId, type, content, emoji, isPinned } = await req.json();
 
     const db = await getDb('tradelog_main');
@@ -207,8 +209,8 @@ export async function PATCH(req: Request) {
       const message = await db.collection('messages').findOne({ _id: new ObjectId(messageId) });
       if (!message) return NextResponse.json({ error: 'Message not found' }, { status: 404 });
 
-      let reactions = message.reactions || [];
-      const userReactionIndex = reactions.findIndex((r: any) => r.userId.toString() === user._id.toString());
+      const reactions = message.reactions || [];
+      const userReactionIndex = reactions.findIndex((r: { userId: ObjectId, emoji: string }) => r.userId.toString() === user._id.toString());
 
       if (userReactionIndex > -1) {
         if (reactions[userReactionIndex].emoji === emoji) {
@@ -251,7 +253,8 @@ export async function DELETE(req: Request) {
     const token = cookieStore.get('token')?.value;
     if (!token) return NextResponse.json({ error: 'Not authenticated' }, { status: 401 });
 
-    const decoded: any = verifyToken(token);
+    const decoded = verifyToken(token) as TokenPayload | null;
+    if (!decoded) return NextResponse.json({ error: 'Invalid token' }, { status: 401 });
     const db = await getDb('tradelog_main');
     const user = await db.collection('users').findOne({ email: decoded.email });
     if (!user) return NextResponse.json({ error: 'User not found' }, { status: 404 });

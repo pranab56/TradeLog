@@ -62,7 +62,7 @@ const SecuritySection = ({
         <div className="p-4 rounded-2xl bg-amber-500/5 border border-amber-500/10 flex items-start space-x-3">
           <AlertCircle className="w-5 h-5 text-amber-500 shrink-0 mt-0.5" />
           <p className="text-xs text-muted-foreground font-semibold italic leading-relaxed">
-            Leave password fields empty if you don't wish to change your credentials. Updating password will require the correct current password.
+            Leave password fields empty if you don&apos;t wish to change your credentials. Updating password will require the correct current password.
           </p>
         </div>
       </CardContent>

@@ -9,27 +9,89 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { toast } from 'sonner';
 
 // Normalize any MongoDB ObjectId / string to a plain string
-const toStr = (id: any): string => {
+const toStr = (id: string | { $oid: string } | { toString: () => string } | undefined | null): string => {
   if (!id) return '';
   if (typeof id === 'string') return id;
-  if (typeof id === 'object' && id.$oid) return id.$oid;
-  if (typeof id === 'object' && typeof id.toString === 'function') return id.toString();
+  if (typeof id === 'object') {
+    if ('$oid' in id) return id.$oid;
+    if (typeof id.toString === 'function') return id.toString();
+  }
   return String(id);
 };
 
+interface Message {
+  _id: string;
+  conversationId: string;
+  senderId: string | { _id: string; name: string; profileImage?: string };
+  content: string;
+  messageType?: string;
+  mediaUrl?: string;
+  replyTo?: {
+    _id: string;
+    content: string;
+    messageType: string;
+    senderName: string;
+  } | string | null;
+  reactions?: { userId: string; emoji: string; userName?: string }[];
+  isPinned?: boolean;
+  isEdited?: boolean;
+  isDeleted?: boolean;
+  status?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+interface Participant {
+  _id: string;
+  name: string;
+  profileImage?: string;
+  onlineStatus?: string;
+}
+
+interface Conversation {
+  _id: string;
+  name?: string;
+  description?: string;
+  isGroup: boolean;
+  participants: Participant[];
+  lastMessage?: Message;
+  unreadCount?: number;
+  isMuted?: boolean;
+  isBlocked?: boolean;
+  groupImage?: string;
+  updatedAt: string;
+  pinnedMessageId?: string | null;
+}
+
+interface Request {
+  _id: string;
+  senderId: { _id: string; name: string; profileImage?: string };
+  receiverId: string;
+  status: string;
+  createdAt: string;
+}
+
+interface User {
+  id: string;
+  _id?: string;
+  name: string;
+  email: string;
+  profileImage?: string;
+}
+
 export default function MessagesPage() {
   const { socket, isConnected } = useSocket();
-  const [conversations, setConversations] = useState<any[]>([]);
-  const [requests, setRequests] = useState<any[]>([]);
-  const [selectedConversation, setSelectedConversation] = useState<any>(null);
+  const [conversations, setConversations] = useState<Conversation[]>([]);
+  const [requests, setRequests] = useState<Request[]>([]);
+  const [selectedConversation, setSelectedConversation] = useState<Conversation | null>(null);
   const [loading, setLoading] = useState(true);
-  const [currentUser, setCurrentUser] = useState<any>(null);
+  const [currentUser, setCurrentUser] = useState<User | null>(null);
 
   // Refs to always have the latest values in event callbacks without stale closures
-  const currentUserRef = useRef<any>(null);
-  const selectedConvRef = useRef<any>(null);
+  const currentUserRef = useRef<User | null>(null);
+  const selectedConvRef = useRef<Conversation | null>(null);
   const audioRef = useRef<HTMLAudioElement | null>(null);
-  const convRef = useRef<any[]>([]);
+  const convRef = useRef<Conversation[]>([]);
 
   useEffect(() => {
     audioRef.current = new Audio('/audio/audio.mp3');
@@ -69,7 +131,7 @@ export default function MessagesPage() {
 
       const selConv = selectedConvRef.current;
       if (selConv) {
-        const stillExists = newConversations.find((c: any) => toStr(c._id) === toStr(selConv._id));
+        const stillExists = newConversations.find((c: Conversation) => toStr(c._id) === toStr(selConv._id));
         if (!stillExists) setSelectedConversation(null);
       }
     } catch (err) {
@@ -84,7 +146,7 @@ export default function MessagesPage() {
     fetchCurrentUser();
     fetchConversations(true);
     fetchRequests();
-  }, []);
+  }, [fetchConversations, fetchCurrentUser, fetchRequests]);
 
   // ─── Join personal room whenever we have both socket + user ──────
   // This is separated from the event listener setup on purpose.
@@ -108,8 +170,10 @@ export default function MessagesPage() {
   // ─── Socket Event Listeners ──────────────────────────────────────
   useEffect(() => {
     if (!socket) return;
+    const fetch = fetchConversations;
+    const requestsFetch = fetchRequests;
 
-    const handleIncomingMessage = (message: any) => {
+    const handleIncomingMessage = (message: Message) => {
       const msgConvId = toStr(message.conversationId);
       setConversations(prev => {
         const exists = prev.find(c => toStr(c._id) === msgConvId);
@@ -127,11 +191,13 @@ export default function MessagesPage() {
         return prev
           .map(conv => {
             if (toStr(conv._id) !== msgConvId) return conv;
-            const isSentByMe = toStr(message.senderId?._id || message.senderId) === toStr(currentUserRef.current?._id || currentUserRef.current?.id);
+            const senderId = typeof message.senderId === 'object' ? toStr(message.senderId._id) : toStr(message.senderId);
+            const myId = toStr(currentUserRef.current?._id || currentUserRef.current?.id);
+            const isSentByMe = senderId === myId;
             return {
               ...conv,
               lastMessage: message,
-              updatedAt: new Date(),
+              updatedAt: new Date().toISOString(),
               unreadCount: (isCurrentlyOpen || isSentByMe) ? 0 : (conv.unreadCount || 0) + 1
             };
           })
@@ -139,75 +205,76 @@ export default function MessagesPage() {
       });
     };
 
-    const onReceiveMessage = (message: any) => {
+    const onReceiveMessage = (message: Message) => {
       console.log('[MessagesPage] receive-message:', message.conversationId);
       handleIncomingMessage(message);
     };
 
-    const onNewMessageNotification = async (message: any) => {
+    const onNewMessageNotification = async (message: Message) => {
       handleIncomingMessage(message);
       const user = currentUserRef.current;
-      const senderId = toStr(message.senderId?._id || message.senderId);
+      const senderId = typeof message.senderId === 'object' ? toStr(message.senderId._id) : toStr(message.senderId);
       const myId = toStr(user?.id);
       if (senderId && myId && senderId !== myId) {
-        const conv = convRef.current.find((c: any) => toStr(c._id) === toStr(message.conversationId));
+        const conv = convRef.current.find((c: Conversation) => toStr(c._id) === toStr(message.conversationId));
         // Fallback to false if the conversation hasn't loaded in local state yet
         const isMuted = conv ? conv.isMuted : false;
 
         if (!isMuted) {
-          toast.info(`New message from ${message.senderId?.name || 'someone'}`);
+          const senderName = typeof message.senderId === 'object' ? message.senderId.name : 'someone';
+          toast.info(`New message from ${senderName}`);
           if (audioRef.current) {
             audioRef.current.currentTime = 0;
-            audioRef.current.play().catch(err => console.log('Audio playback prevented by browser:', err));
+            audioRef.current.play().catch(playErr => console.log('Audio playback prevented by browser:', playErr));
           }
         }
       }
     };
 
-    const onReceiveInvite = (data: any) => {
+    const onReceiveInvite = (data: { senderName: string }) => {
       console.log('[MessagesPage] receive-invite:', data);
       toast.info(`New message request from ${data.senderName}`);
-      fetchRequests();
+      requestsFetch();
     };
 
-    const onReceiveInviteAccepted = (data: any) => {
+    const onReceiveInviteAccepted = (data: { receiverName: string }) => {
       console.log('[MessagesPage] receive-invite-accepted:', data);
       toast.success(`${data.receiverName} accepted your invite`);
-      fetchConversations();
-      fetchRequests();
+      fetch();
+      requestsFetch();
     };
 
-    const onConversationCreated = (data: any) => {
+    const onConversationCreated = (data: { action: string; isBlocked?: boolean; blockedBy?: string }) => {
       console.log('[MessagesPage] conversation-created/updated');
       if (data.action === 'block' && data.isBlocked) {
         toast.error(`${data.blockedBy} blocked you.`);
       }
-      fetchConversations();
+      fetch();
     };
 
-    const onConversationDeleted = (data: any) => {
+    const onConversationDeleted = () => {
       console.log('[MessagesPage] conversation-deleted');
-      fetchConversations();
+      fetch();
     };
 
-    const onMessageRead = (data: any) => {
-      fetchConversations();
+    const onMessageRead = () => {
+      fetch();
     };
 
-    const onPresenceUpdate = ({ userId, status }: any) => {
+    const onPresenceUpdate = ({ userId, status }: { userId: string; status: string }) => {
       const uId = toStr(userId);
       setConversations(prev => prev.map(conv => {
         if (conv.isGroup) return conv;
         return {
           ...conv,
-          participants: conv.participants.map((p: any) =>
+          participants: conv.participants.map((p: Participant) =>
             toStr(p._id) === uId ? { ...p, onlineStatus: status } : p
           ),
         };
       }));
     };
 
-    const onGroupUpdated = (data: any) => {
+    const onGroupUpdated = (data: { conversationId: string; name: string; description?: string; groupImage?: string }) => {
       console.log('[MessagesPage] group-updated received:', data);
 
       // 1. Update conversations list
@@ -218,7 +285,7 @@ export default function MessagesPage() {
             name: data.name,
             description: data.description,
             groupImage: data.groupImage,
-            updatedAt: new Date()
+            updatedAt: new Date().toISOString()
           };
         }
         return conv;
@@ -226,12 +293,12 @@ export default function MessagesPage() {
 
       // 2. Update selected conversation if it matches
       if (selectedConvRef.current && toStr(selectedConvRef.current?._id) === toStr(data.conversationId)) {
-        setSelectedConversation((prev: any) => ({
+        setSelectedConversation((prev: Conversation | null) => prev ? ({
           ...prev,
           name: data.name,
           description: data.description,
           groupImage: data.groupImage
-        }));
+        }) : null);
       }
     };
 
@@ -256,7 +323,7 @@ export default function MessagesPage() {
       socket.off('message-read', onMessageRead);
       socket.off('group-updated', onGroupUpdated);
     };
-  }, [socket]);
+  }, [socket, fetchConversations, fetchRequests, joinPersonalRoom]);
 
   return (
     <MainLayout>
@@ -289,7 +356,7 @@ export default function MessagesPage() {
               setConversations(prev => {
                 const updated = prev.map(c =>
                   toStr(c._id) === toStr(msg.conversationId)
-                    ? { ...c, lastMessage: msg, updatedAt: new Date(), unreadCount: 0 }
+                    ? { ...c, lastMessage: msg, updatedAt: new Date().toISOString(), unreadCount: 0 }
                     : c
                 );
                 return updated.sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime());

@@ -14,7 +14,6 @@ function VerifyContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const email = searchParams?.get('email');
-  const cardRef = useRef(null);
   const inputRefs = useRef<(HTMLInputElement | null)[]>([]);
 
 
@@ -61,8 +60,12 @@ function VerifyContent() {
       setTimeout(() => {
         router.push('/login');
       }, 2000);
-    } catch (err: any) {
-      setError(err.message);
+    } catch (err: unknown) {
+      if (err instanceof Error) {
+        setError(err.message);
+      } else {
+        setError('An unexpected error occurred');
+      }
     } finally {
       setLoading(false);
     }
@@ -133,7 +136,7 @@ function VerifyContent() {
 
       <div className="text-center">
         <p className="text-muted-foreground text-sm">
-          Didn't receive the code?{' '}
+          Didn&apos;t receive the code?{' '}
           <button className="text-primary font-semibold hover:underline">Resend OTP</button>
         </p>
       </div>

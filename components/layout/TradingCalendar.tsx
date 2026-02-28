@@ -36,7 +36,7 @@ const DayWithTooltip = memo(({
   day: { date: Date };
   className?: string;
   summary?: DailySummary;
-  [key: string]: any;
+  [key: string]: unknown;
 }) => {
   if (!summary) {
     return (
@@ -154,7 +154,7 @@ const DayWithTooltip = memo(({
                 <div className="space-y-2">
                   {summary.notes.slice(0, 3).map((note, idx) => (
                     <p key={idx} className="text-[11px] text-muted-foreground leading-relaxed font-bold italic line-clamp-1 border-l-2 border-primary/20 pl-2">
-                      "{note}"
+                      &quot;{note}&quot;
                     </p>
                   ))}
                   {summary.notes.length > 3 && (
@@ -178,7 +178,7 @@ export function TradingCalendar() {
   const dailyDataMap = useMemo(() => {
     const map: Record<string, DailySummary> = {};
     if (Array.isArray(trades)) {
-      trades.forEach((trade: any) => {
+      trades.forEach((trade: { date: string; profit: string | number; loss: string | number; notes?: string }) => {
         const dateKey = format(parseISO(trade.date), "yyyy-MM-dd");
         if (!map[dateKey]) {
           map[dateKey] = {
@@ -192,8 +192,8 @@ export function TradingCalendar() {
             notes: []
           };
         }
-        const p = parseFloat(trade.profit) || 0;
-        const l = parseFloat(trade.loss) || 0;
+        const p = typeof trade.profit === 'string' ? parseFloat(trade.profit) : (Number(trade.profit) || 0);
+        const l = typeof trade.loss === 'string' ? parseFloat(trade.loss) : (Number(trade.loss) || 0);
         map[dateKey].profit += p;
         map[dateKey].loss += l;
         map[dateKey].net += (p - l);
@@ -208,7 +208,7 @@ export function TradingCalendar() {
 
   // 2. Memoize components to ensure react-day-picker doesn't think the component type changed
   const calendarComponents = useMemo(() => ({
-    DayButton: ({ day, className, ...props }: any) => {
+    DayButton: ({ day, className, ...props }: any) => { // eslint-disable-line @typescript-eslint/no-explicit-any
       const dateKey = format(day.date, "yyyy-MM-dd");
       return (
         <DayWithTooltip

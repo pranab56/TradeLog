@@ -2,10 +2,10 @@ import mongoose from 'mongoose';
 
 const MONGODB_URI = (process.env.MONGODB_URI as string) || "";
 
-let cached = (global as any).mongoose;
+let cached = (global as unknown as { mongoose: { conn: mongoose.Mongoose | null, promise: Promise<mongoose.Mongoose> | null } }).mongoose;
 
 if (!cached) {
-  cached = (global as any).mongoose = { conn: null, promise: null };
+  cached = (global as unknown as { mongoose: { conn: mongoose.Mongoose | null, promise: Promise<mongoose.Mongoose> | null } }).mongoose = { conn: null, promise: null };
 }
 
 async function connectDB() {

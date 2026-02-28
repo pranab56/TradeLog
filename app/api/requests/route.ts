@@ -1,6 +1,6 @@
-import { verifyToken } from '@/lib/auth-utils';
+import { TokenPayload, verifyToken } from '@/lib/auth-utils';
 import { getDb } from '@/lib/mongodb-client';
-import { ObjectId } from 'mongodb';
+import { Document, ObjectId, UpdateFilter } from 'mongodb';
 import { cookies } from 'next/headers';
 import { NextResponse } from 'next/server';
 
@@ -11,7 +11,8 @@ export async function GET() {
 
     if (!token) return NextResponse.json({ error: 'Not authenticated' }, { status: 401 });
 
-    const decoded: any = verifyToken(token);
+    const decoded = verifyToken(token) as TokenPayload | null;
+    if (!decoded) return NextResponse.json({ error: 'Invalid token' }, { status: 401 });
     const db = await getDb('tradelog_main');
     const user = await db.collection('users').findOne({ email: decoded.email });
 
@@ -24,20 +25,22 @@ export async function GET() {
           from: 'users',
           localField: 'senderId',
           foreignField: '_id',
-          as: 'sender'
+          as: 'senderInfo'
         }
       },
-      { $unwind: '$sender' },
+      { $unwind: '$senderInfo' },
       {
         $project: {
           _id: 1,
           status: 1,
           createdAt: 1,
-          senderId: 1,
           receiverId: 1,
-          'sender.name': 1,
-          'sender.email': 1,
-          'sender.profileImage': 1
+          senderId: {
+            _id: '$senderInfo._id',
+            name: '$senderInfo.name',
+            email: '$senderInfo.email',
+            profileImage: '$senderInfo.profileImage'
+          }
         }
       }
     ]).toArray();
@@ -56,7 +59,8 @@ export async function POST(req: Request) {
 
     if (!token) return NextResponse.json({ error: 'Not authenticated' }, { status: 401 });
 
-    const decoded: any = verifyToken(token);
+    const decoded = verifyToken(token) as TokenPayload | null;
+    if (!decoded) return NextResponse.json({ error: 'Invalid token' }, { status: 401 });
     const { receiverId } = await req.json();
 
     const db = await getDb('tradelog_main');
@@ -131,7 +135,7 @@ export async function PATCH(req: Request) {
         await db.collection('conversations').updateOne(
           { _id: existing._id },
           {
-            $pull: { deletedBy: { $in: participants } } as any,
+            $pull: { deletedBy: { $in: participants } } as unknown as UpdateFilter<Document>['$pull'],
             $set: { updatedAt: new Date() }
           }
         );

@@ -1,6 +1,6 @@
-import { verifyToken } from '@/lib/auth-utils';
+import { TokenPayload, verifyToken } from '@/lib/auth-utils';
 import { getDb } from '@/lib/mongodb-client';
-import { ObjectId } from 'mongodb';
+import { Document, ObjectId, UpdateFilter } from 'mongodb';
 import { cookies } from 'next/headers';
 import { NextResponse } from 'next/server';
 
@@ -11,7 +11,7 @@ export async function GET() {
 
     if (!token) return NextResponse.json({ error: 'Not authenticated' }, { status: 401 });
 
-    const decoded: any = verifyToken(token);
+    const decoded = verifyToken(token) as TokenPayload | null;
     if (!decoded) return NextResponse.json({ error: 'Invalid token' }, { status: 401 });
 
     const db = await getDb('tradelog_main');
@@ -79,7 +79,7 @@ export async function GET() {
       isBlocked: c.blockedBy?.length > 0 ? true : false,
       isBlockedByMe: c.blockedBy?.some((id: ObjectId) => id.toString() === user._id.toString()) || false,
       unreadCount: c.unreadData?.[0]?.unread || 0,
-      participants: c.participantDetails.map((p: any) => ({
+      participants: c.participantDetails.map((p: { _id: ObjectId, name: string, email: string, profileImage?: string, onlineStatus?: string }) => ({
         _id: p._id.toString(),
         name: p.name,
         email: p.email,
@@ -89,8 +89,8 @@ export async function GET() {
     }));
 
     return NextResponse.json({ conversations: formattedConversations });
-  } catch (error) {
-    console.error('Fetch conversations error:', error);
+  } catch (err: unknown) {
+    console.error('Fetch conversations error:', err);
     return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });
   }
 }
@@ -102,7 +102,8 @@ export async function POST(req: Request) {
 
     if (!token) return NextResponse.json({ error: 'Not authenticated' }, { status: 401 });
 
-    const decoded: any = verifyToken(token);
+    const decoded = verifyToken(token) as TokenPayload | null;
+    if (!decoded) return NextResponse.json({ error: 'Not authenticated' }, { status: 401 });
     const { participants, isGroup, name, description } = await req.json();
 
     const db = await getDb('tradelog_main');
@@ -136,8 +137,8 @@ export async function POST(req: Request) {
 
     const result = await db.collection('conversations').insertOne(newConversation);
     return NextResponse.json({ conversation: { ...newConversation, _id: result.insertedId } }, { status: 201 });
-  } catch (error) {
-    console.error('Create conversation error:', error);
+  } catch (err: unknown) {
+    console.error('Create conversation error:', err);
     return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });
   }
 }
@@ -149,7 +150,7 @@ export async function PATCH(req: Request) {
 
     if (!token) return NextResponse.json({ error: 'Not authenticated' }, { status: 401 });
 
-    const decoded: any = verifyToken(token);
+    const decoded = verifyToken(token) as TokenPayload | null;
     if (!decoded) return NextResponse.json({ error: 'Invalid token' }, { status: 401 });
 
     const { conversationId, isPinned, isMuted, isBlocked, type, name, description, groupImage } = await req.json();
@@ -179,20 +180,25 @@ export async function PATCH(req: Request) {
       return NextResponse.json({ message: 'Group updated' });
     }
 
-    const finalUpdate: any = { $set: { updatedAt: new Date() }, $addToSet: {}, $pull: {} };
+    const finalUpdate: UpdateFilter<Document> = {
+      $set: { updatedAt: new Date() }
+    };
+
+    const pushOps: Record<string, ObjectId> = {};
+    const pullOps: Record<string, ObjectId> = {};
 
     if (typeof isPinned !== 'undefined') {
-      if (isPinned) finalUpdate.$addToSet.pinnedBy = user._id; else finalUpdate.$pull.pinnedBy = user._id;
+      if (isPinned) pushOps.pinnedBy = user._id; else pullOps.pinnedBy = user._id;
     }
     if (typeof isMuted !== 'undefined') {
-      if (isMuted) finalUpdate.$addToSet.mutedBy = user._id; else finalUpdate.$pull.mutedBy = user._id;
+      if (isMuted) pushOps.mutedBy = user._id; else pullOps.mutedBy = user._id;
     }
     if (typeof isBlocked !== 'undefined') {
-      if (isBlocked) finalUpdate.$addToSet.blockedBy = user._id; else finalUpdate.$pull.blockedBy = user._id;
+      if (isBlocked) pushOps.blockedBy = user._id; else pullOps.blockedBy = user._id;
     }
 
-    if (Object.keys(finalUpdate.$addToSet).length === 0) delete finalUpdate.$addToSet;
-    if (Object.keys(finalUpdate.$pull).length === 0) delete finalUpdate.$pull;
+    if (Object.keys(pushOps).length > 0) finalUpdate.$addToSet = pushOps as unknown as UpdateFilter<Document>['$addToSet'];
+    if (Object.keys(pullOps).length > 0) finalUpdate.$pull = pullOps as unknown as UpdateFilter<Document>['$pull'];
 
     await db.collection('conversations').updateOne(
       { _id: new ObjectId(conversationId) },
@@ -200,8 +206,8 @@ export async function PATCH(req: Request) {
     );
 
     return NextResponse.json({ message: 'Conversation updated' });
-  } catch (error) {
-    console.error('Update conversation error:', error);
+  } catch (err: unknown) {
+    console.error('Update conversation error:', err);
     return NextResponse.json({ error: 'Error updating conversation' }, { status: 500 });
   }
 }
@@ -213,7 +219,7 @@ export async function DELETE(req: Request) {
 
     if (!token) return NextResponse.json({ error: 'Not authenticated' }, { status: 401 });
 
-    const decoded: any = verifyToken(token);
+    const decoded = verifyToken(token) as TokenPayload | null;
     if (!decoded) return NextResponse.json({ error: 'Invalid token' }, { status: 401 });
 
     const { searchParams } = new URL(req.url);
@@ -240,8 +246,8 @@ export async function DELETE(req: Request) {
       );
       return NextResponse.json({ message: 'Conversation deleted for you' });
     }
-  } catch (error) {
-    console.error('Delete conversation error:', error);
+  } catch (err: unknown) {
+    console.error('Delete conversation error:', err);
     return NextResponse.json({ error: 'Error deleting conversation' }, { status: 500 });
   }
 }

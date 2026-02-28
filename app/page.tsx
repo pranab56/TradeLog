@@ -260,7 +260,7 @@ export default function OverviewPage() {
           {/* Profit/Loss Chart */}
           <Card className="border-border bg-card/50 backdrop-blur-sm rounded-3xl p-5 md:p-8">
             <div className="flex items-center space-x-3 mb-8">
-              <div className={`p-2 rounded-xl transition-colors ${filteredChartData.reduce((acc: number, i: any) => acc + (i.net || 0), 0) >= 0 ? 'bg-profit/10 text-profit' : 'bg-loss/10 text-loss'}`}>
+              <div className={`p-2 rounded-xl transition-colors ${filteredChartData.reduce((acc: number, i: { net?: number }) => acc + (i.net || 0), 0) >= 0 ? 'bg-profit/10 text-profit' : 'bg-loss/10 text-loss'}`}>
                 <BarChart3 className="w-5 h-5" />
               </div>
               <div>
