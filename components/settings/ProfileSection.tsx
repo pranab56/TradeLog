@@ -31,7 +31,7 @@ const ProfileSection = ({
             <User className="w-5 h-5 md:w-6 md:h-6" />
           </div>
           <div className="space-y-0.5">
-            <CardTitle className="text-lg md:text-xl font-black uppercase tracking-tighter italic">Identity & Bio</CardTitle>
+            <CardTitle className="text-lg md:text-xl font-medium">Identity & Bio</CardTitle>
             <CardDescription className="font-bold text-[10px] md:text-xs">How others see you in the network.</CardDescription>
           </div>
         </div>
@@ -39,30 +39,30 @@ const ProfileSection = ({
       <CardContent className="p-6 md:p-8 space-y-6 md:space-y-8">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 md:gap-8">
           <div className="space-y-2.5">
-            <Label className="text-[10px] md:text-xs font-black uppercase tracking-widest flex items-center text-muted-foreground">
+            <Label className="text-sm md:text-base font-medium flex items-center">
               <Hash className="w-3 md:w-3.5 h-3 md:h-3.5 mr-1.5 md:mr-2 text-primary" /> Full Display Name
             </Label>
             <Input
               value={name}
               onChange={(e) => setName(e.target.value)}
-              className="bg-accent/5 border-border/50 h-11 md:h-12 rounded-2xl focus-visible:ring-primary/20 font-bold text-sm md:text-base focus:bg-background/50 transition-all"
+              className="bg-accent/5 border-border/50 h-11 md:h-12 rounded-2xl focus-visible:ring-primary/20 font-normal text-sm md:text-base focus:bg-background/50 transition-all"
             />
           </div>
           <div className="space-y-2.5">
-            <Label className="text-[10px] md:text-xs font-black uppercase tracking-widest flex items-center text-muted-foreground">
+            <Label className="text-sm md:text-base font-medium flex items-center ">
               <AtSign className="w-3 md:w-3.5 h-3 md:h-3.5 mr-1.5 md:mr-2 text-primary" /> Trading Alias
             </Label>
             <Input
               placeholder="trader_name"
               value={username}
               onChange={(e) => setUsername(e.target.value)}
-              className="bg-accent/5 border-border/50 h-11 md:h-12 rounded-2xl focus-visible:ring-primary/20 font-bold text-sm md:text-base focus:bg-background/50 transition-all"
+              className="bg-accent/5 border-border/50 h-11 md:h-12 rounded-2xl focus-visible:ring-primary/20 font-normal text-sm md:text-base focus:bg-background/50 transition-all"
             />
           </div>
         </div>
 
         <div className="space-y-2.5">
-          <Label className="text-[10px] md:text-xs font-black uppercase tracking-widest flex items-center text-muted-foreground">
+          <Label className="text-sm md:text-base font-medium flex items-center">
             <FileText className="w-3 md:w-3.5 h-3 md:h-3.5 mr-1.5 md:mr-2 text-primary" /> Professional Bio
           </Label>
           <textarea
@@ -70,7 +70,7 @@ const ProfileSection = ({
             value={bio}
             onChange={(e) => setBio(e.target.value)}
             placeholder="Tell us about your trading philosophy..."
-            className="w-full bg-accent/5 border border-border/50 p-4 rounded-2xl focus:outline-none focus:ring-2 focus:ring-primary/20 font-bold text-sm md:text-base resize-none shadow-inner focus:bg-background/50 transition-all min-h-[120px]"
+            className="w-full bg-accent/5 border border-border/50 p-4 rounded-2xl focus:outline-none focus:ring-2 focus:ring-primary/20 font-normal text-sm md:text-base resize-none focus:bg-background/50 transition-all min-h-[120px]"
           />
         </div>
       </CardContent>

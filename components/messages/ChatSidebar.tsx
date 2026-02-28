@@ -12,8 +12,7 @@ import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { cn } from '@/lib/utils';
 import { useSocket } from '@/providers/socket-provider';
-import dayjs from 'dayjs';
-import relativeTime from 'dayjs/plugin/relativeTime';
+import dayjs from '@/lib/dayjs';
 import {
   MessageSquarePlus, MoreVertical,
   Pin as PinIcon, Plus, Search, Trash, UserMinus, Volume2,
@@ -27,7 +26,7 @@ import SearchUsers from './SearchUsers';
 import axios from 'axios';
 import { toast } from 'sonner';
 
-dayjs.extend(relativeTime);
+// dayjs configured in @/lib/dayjs
 
 interface Participant {
   _id: string;
@@ -192,6 +191,7 @@ export default function ChatSidebar({
             size="icon"
             onClick={() => setShowSearch(true)}
             title="New Chat"
+            className="cursor-pointer"
           >
             <MessageSquarePlus className="w-5 h-5" />
           </Button>
@@ -200,6 +200,7 @@ export default function ChatSidebar({
             size="icon"
             onClick={() => setShowGroupModal(true)}
             title="New Group"
+            className="cursor-pointer"
           >
             <Plus className="w-5 h-5" />
           </Button>
@@ -212,7 +213,7 @@ export default function ChatSidebar({
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
           <Input
             placeholder="Search conversations..."
-            className="pl-9 bg-muted/50 border-none transition-all focus-visible:bg-muted"
+            className="pl-9 bg-muted/50 border-none transition-all focus-visible:bg-muted cursor-pointer"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
           />
@@ -223,7 +224,7 @@ export default function ChatSidebar({
           <button
             onClick={() => setActiveTab('all')}
             className={cn(
-              "flex-1 px-3 py-1.5 text-xs font-medium rounded-md transition-all",
+              "flex-1 px-3 py-1.5 text-xs font-medium rounded-md transition-all cursor-pointer",
               activeTab === 'all' ? "bg-background shadow-sm text-foreground" : "text-muted-foreground hover:text-foreground"
             )}
           >
@@ -232,7 +233,7 @@ export default function ChatSidebar({
           <button
             onClick={() => setActiveTab('blocked')}
             className={cn(
-              "flex-1 px-3 py-1.5 text-xs font-medium rounded-md transition-all",
+              "flex-1 px-3 py-1.5 text-xs font-medium rounded-md transition-all cursor-pointer",
               activeTab === 'blocked' ? "bg-background shadow-sm text-foreground" : "text-muted-foreground hover:text-foreground"
             )}
           >
@@ -277,7 +278,7 @@ export default function ChatSidebar({
                   <button
                     onClick={() => onSelect(conv)}
                     className={cn(
-                      "w-full flex items-center gap-3 p-3 rounded-xl transition-all hover:bg-muted/50 text-left",
+                      "w-full flex items-center gap-3 p-3 rounded-xl transition-all hover:bg-muted/50 text-left cursor-pointer",
                       selectedId === conv._id && "bg-primary/10 hover:bg-primary/20"
                     )}
                   >

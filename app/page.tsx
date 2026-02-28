@@ -19,6 +19,7 @@ import {
   Wallet
 } from 'lucide-react';
 import Link from 'next/link';
+import dayjs from '@/lib/dayjs';
 import { useEffect, useState } from 'react';
 import Loading from '../components/Loading/Loading';
 
@@ -27,10 +28,7 @@ export default function OverviewPage() {
   const [activeTab, setActiveTab] = useState('daily');
 
   useEffect(() => {
-    const now = new Date();
-    const offset = now.getTimezoneOffset();
-    const localDate = new Date(now.getTime() - (offset * 60 * 1000));
-    setLocalToday(localDate.toISOString().split('T')[0]);
+    setLocalToday(dayjs().format('YYYY-MM-DD'));
   }, []);
 
   const { data, error, isLoading } = useGetAnalyticsQuery(localToday, { skip: !localToday });

@@ -21,11 +21,13 @@ import axios from 'axios';
 import { motion } from 'framer-motion';
 import {
   ArrowLeft,
+  CalendarDays,
   Loader2,
   MoreVertical,
   Pin,
   Settings,
-  Trash2
+  Trash2,
+  X
 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useCallback, useEffect, useRef, useState } from 'react';
@@ -35,6 +37,8 @@ import CallOverlay from './CallOverlay';
 import GroupSettingsModal from './GroupSettingsModal';
 import MessageInput from './MessageInput';
 import MessageItem from './MessageItem';
+import { Calendar } from '@/components/ui/calendar';
+import dayjs from '@/lib/dayjs';
 
 
 
@@ -115,6 +119,10 @@ export default function ChatWindow({ conversation, currentUser, onMessageSent, o
   const convId = toStr(conversation._id);
   const [messages, setMessages] = useState<Message[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [hasMore, setHasMore] = useState(true);
+  const pageRef = useRef(1);
+  const preventScrollRef = useRef(false); // blocks scroll-to-bottom when loading older messages
   const [typingUser, setTypingUser] = useState<{ id: string; name: string } | null>(null);
   const [replyingTo, setReplyingTo] = useState<Message | null>(null);
   const [editingMessage, setEditingMessage] = useState<Message | null>(null);
@@ -123,6 +131,11 @@ export default function ChatWindow({ conversation, currentUser, onMessageSent, o
   const [showGroupSettings, setShowGroupSettings] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
   const router = useRouter();
+  const [dateFilter, setDateFilter] = useState<string | null>(null); // YYYY-MM-DD
+  const [filteredMessages, setFilteredMessages] = useState<Message[] | null>(null);
+  const [loadingFilter, setLoadingFilter] = useState(false);
+  const [showDatePicker, setShowDatePicker] = useState(false);
+  const [calendarDate, setCalendarDate] = useState<Date | undefined>(undefined);
 
   const otherParticipant = !conversation.isGroup
     ? conversation.participants.find((p: Participant) => toStr(p._id) !== toStr(currentUser?.id || currentUser?._id))
@@ -131,25 +144,94 @@ export default function ChatWindow({ conversation, currentUser, onMessageSent, o
   const title = conversation.isGroup ? conversation.name : otherParticipant?.name;
   const image = conversation.isGroup ? conversation.groupImage : otherParticipant?.profileImage;
 
-  const fetchMessages = useCallback(async () => {
+  const fetchMessages = useCallback(async (isInitial = true) => {
     try {
-      setLoading(true);
-      const res = await axios.get(`/api/messages?conversationId=${conversation._id}`);
-      setMessages(res.data.messages);
+      if (isInitial) {
+        setLoading(true);
+        pageRef.current = 1;
+      } else {
+        setLoadingMore(true);
+      }
+
+      const pageToFetch = isInitial ? 1 : pageRef.current + 1;
+      const res = await axios.get(`/api/messages?conversationId=${conversation._id}&page=${pageToFetch}&limit=20`);
+
+      const newMessages = res.data.messages;
+
+      if (isInitial) {
+        preventScrollRef.current = false; // allow scroll to bottom on initial load
+        setMessages(newMessages);
+      } else {
+        pageRef.current = pageToFetch;
+        preventScrollRef.current = true; // block scroll when prepending old messages
+        setMessages(prev => [...newMessages, ...prev]);
+      }
+
+      setHasMore(res.data.hasMore);
 
       // Mark as read
-      await axios.post('/api/conversations/read', { conversationId: conversation._id });
-      if (socket) socket.emit('mark-read', { conversationId: conversation._id, userId: currentUser?.id });
+      if (isInitial) {
+        await axios.post('/api/conversations/read', { conversationId: conversation._id });
+        if (socket) socket.emit('mark-read', { conversationId: conversation._id, userId: currentUser?.id });
+      }
     } catch (err) {
       console.error('Fetch messages error', err);
     } finally {
-      setLoading(false);
+      if (isInitial) setLoading(false);
+      else {
+        setLoadingMore(false);
+        // Keep preventScrollRef true briefly so the re-render from setMessages
+        // doesn't trigger scroll. Reset after paint.
+        requestAnimationFrame(() => { preventScrollRef.current = false; });
+      }
     }
-  }, [conversation._id, currentUser?.id, socket]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [conversation._id, currentUser?.id, socket]); // page intentionally excluded — using pageRef instead
 
   useEffect(() => {
-    fetchMessages();
+    setMessages([]);
+    setHasMore(true);
+    pageRef.current = 1;
+    fetchMessages(true);
   }, [convId, fetchMessages]);
+
+  const loadMoreMessages = () => {
+    if (!loading && !loadingMore && hasMore && !dateFilter) {
+      fetchMessages(false);
+    }
+  };
+
+  const applyDateFilter = async (date: string) => {
+    try {
+      setLoadingFilter(true);
+      setDateFilter(date);
+      setShowDatePicker(false);
+      const res = await axios.get(`/api/messages?conversationId=${conversation._id}&date=${date}`);
+      setFilteredMessages(res.data.messages);
+    } catch (err) {
+      console.error('Filter messages error', err);
+      toast.error('Failed to filter messages');
+    } finally {
+      setLoadingFilter(false);
+    }
+  };
+
+  const clearDateFilter = () => {
+    setDateFilter(null);
+    setFilteredMessages(null);
+    setShowDatePicker(false);
+    setCalendarDate(undefined);
+  };
+
+  const getDateLabel = (dateStr: string) => {
+    const today = new Date();
+    const yesterday = new Date(); yesterday.setDate(yesterday.getDate() - 1);
+    const todayStr = today.toISOString().split('T')[0];
+    const yesterdayStr = yesterday.toISOString().split('T')[0];
+    if (dateStr === todayStr) return 'Today';
+    if (dateStr === yesterdayStr) return 'Yesterday';
+    return new Date(dateStr).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+  };
 
   useEffect(() => {
     if (!socket) return;
@@ -185,7 +267,7 @@ export default function ChatWindow({ conversation, currentUser, onMessageSent, o
     };
 
     const onMessageEdited = (updatedMessage: Message) => {
-      setMessages(prev => prev.map(m => toStr(m._id) === toStr(updatedMessage._id) ? updatedMessage : m));
+      setMessages(prev => prev.map(m => toStr(m._id) === toStr(updatedMessage._id) ? { ...m, ...updatedMessage } : m));
     };
 
     const onMessageDeleted = (data: { messageId: string }) => {
@@ -193,7 +275,7 @@ export default function ChatWindow({ conversation, currentUser, onMessageSent, o
     };
 
     const onMessageReacted = (updatedMessage: Message) => {
-      setMessages(prev => prev.map(m => toStr(m._id) === toStr(updatedMessage._id) ? updatedMessage : m));
+      setMessages(prev => prev.map(m => toStr(m._id) === toStr(updatedMessage._id) ? { ...m, ...updatedMessage } : m));
 
       // Play sound when someone reacts
       const playReactSound = () => {
@@ -245,9 +327,21 @@ export default function ChatWindow({ conversation, currentUser, onMessageSent, o
     }
   }, []);
 
+  const prevMessagesLengthRef = useRef(0);
+
   useEffect(() => {
-    scrollToBottom();
-  }, [messages, typingUser, scrollToBottom]);
+    if (preventScrollRef.current) return; // older messages loaded — don't scroll
+    const scrollableDiv = scrollRef.current;
+    if (!scrollableDiv) return;
+    scrollableDiv.scrollTop = 0;
+  }, [messages]);
+
+  useEffect(() => {
+    if (!typingUser) return;
+    const scrollableDiv = scrollRef.current;
+    if (!scrollableDiv) return;
+    scrollableDiv.scrollTop = 0;
+  }, [typingUser]);
 
   const scrollToMessage = (msgId: string) => {
     const el = document.getElementById(`msg-${msgId}`);
@@ -280,7 +374,11 @@ export default function ChatWindow({ conversation, currentUser, onMessageSent, o
               isEdited: updatedFromApi.isEdited,
               updatedAt: updatedFromApi.updatedAt
             };
-            if (socket) socket.emit('edit-message', updated);
+            if (socket) socket.emit('edit-message', {
+              ...updated,
+              conversationId: convId,
+              participants: conversation.participants.map((p: Participant) => p._id)
+            });
             return updated;
           }
           return m;
@@ -306,7 +404,7 @@ export default function ChatWindow({ conversation, currentUser, onMessageSent, o
           senderName: (typeof replyingTo.senderId === 'object' ? replyingTo.senderId.name : 'User')
         };
       }
-      
+
 
       setMessages(prev => [...prev, newMessage]);
       setReplyingTo(null);
@@ -334,7 +432,10 @@ export default function ChatWindow({ conversation, currentUser, onMessageSent, o
       const newMessages = messages.map(m => {
         if (m._id === messageId) {
           const updated = { ...m, reactions: updatedReactions };
-          if (socket) socket.emit('react-message', updated);
+          if (socket) socket.emit('react-message', {
+            ...updated,
+            participants: conversation.participants.map((p: Participant) => p._id)
+          });
           return updated;
         }
         return m;
@@ -362,7 +463,11 @@ export default function ChatWindow({ conversation, currentUser, onMessageSent, o
         const newMessages = prev.map(m => {
           if (m._id === messageId) {
             const updated = { ...m, isPinned: newPinStatus };
-            if (socket) socket.emit('edit-message', updated);
+            if (socket) socket.emit('edit-message', {
+              ...updated,
+              conversationId: convId,
+              participants: conversation.participants.map((p: Participant) => p._id)
+            });
             return updated;
           }
           return m;
@@ -381,7 +486,11 @@ export default function ChatWindow({ conversation, currentUser, onMessageSent, o
     try {
       await axios.delete(`/api/messages?messageId=${messageId}`);
       setMessages(prev => prev.filter(m => m._id !== messageId));
-      if (socket) socket.emit('delete-message', { conversationId: conversation._id, messageId });
+      if (socket) socket.emit('delete-message', {
+        conversationId: conversation._id,
+        messageId,
+        participants: conversation.participants.map((p: Participant) => p._id)
+      });
     } catch (err) {
       console.error('Delete error', err);
     }
@@ -417,7 +526,7 @@ export default function ChatWindow({ conversation, currentUser, onMessageSent, o
             <Button
               variant="ghost"
               size="icon"
-              className="md:hidden flex-shrink-0 text-muted-foreground mr-1"
+              className="md:hidden flex-shrink-0 text-muted-foreground mr-1 cursor-pointer"
               onClick={onBack}
             >
               <ArrowLeft className="w-5 h-5" />
@@ -444,11 +553,67 @@ export default function ChatWindow({ conversation, currentUser, onMessageSent, o
           </div>
         </div>
         <div className="flex items-center gap-1">
+          {/* Date Filter Button */}
+          <div className="relative">
+            <Button
+              variant="ghost"
+              size="icon"
+              className={`transition-colors hover:text-primary cursor-pointer ${dateFilter ? 'text-primary bg-primary/10' : 'text-muted-foreground'}`}
+              onClick={() => setShowDatePicker(prev => !prev)}
+              title="Filter by date"
+            >
+              <CalendarDays className="w-5 h-5" />
+            </Button>
+            {showDatePicker && (
+              <div className="absolute right-0 top-12 z-50 bg-card border border-border rounded-2xl shadow-2xl p-4 w-72 animate-in fade-in slide-in-from-top-2">
+                <p className="text-xs font-black text-muted-foreground uppercase tracking-widest mb-3">Filter Messages</p>
+                <div className="space-y-1.5">
+                  {[
+                    { label: 'Today', value: new Date().toISOString().split('T')[0] },
+                    { label: 'Yesterday', value: (() => { const d = new Date(); d.setDate(d.getDate() - 1); return d.toISOString().split('T')[0]; })() },
+                    { label: 'Last 7 days', value: (() => { const d = new Date(); d.setDate(d.getDate() - 6); return d.toISOString().split('T')[0]; })() },
+                  ].map(opt => (
+                    <button
+                      key={opt.value}
+                      onClick={() => applyDateFilter(opt.value)}
+                      className={`w-full text-left px-3 py-2 rounded-xl text-sm font-medium transition-all cursor-pointer hover:bg-primary/10 hover:text-primary ${dateFilter === opt.value ? 'bg-primary/10 text-primary font-bold' : ''
+                        }`}
+                    >
+                      {opt.label}
+                    </button>
+                  ))}
+                  <div className="pt-2 border-t border-border">
+                    <p className="text-[10px] text-muted-foreground mb-2 uppercase tracking-widest font-bold">Custom Date</p>
+                    <Calendar
+                      mode="single"
+                      selected={calendarDate}
+                      onSelect={(date) => {
+                        if (date) {
+                          setCalendarDate(date);
+                          applyDateFilter(dayjs(date).format('YYYY-MM-DD'));
+                        }
+                      }}
+                      disabled={{ after: new Date() }}
+                      className="rounded-xl border border-border p-0 scale-90 origin-top-left"
+                    />
+                  </div>
+                  {dateFilter && (
+                    <button
+                      onClick={clearDateFilter}
+                      className="w-full text-left px-3 py-2 rounded-xl text-sm font-medium text-loss hover:bg-loss/10 transition-all cursor-pointer"
+                    >
+                      Clear Filter
+                    </button>
+                  )}
+                </div>
+              </div>
+            )}
+          </div>
           {conversation.isGroup && (
             <Button
               variant="ghost"
               size="icon"
-              className="text-muted-foreground transition-colors hover:text-primary"
+              className="text-muted-foreground transition-colors hover:text-primary cursor-pointer"
               onClick={() => setShowGroupSettings(true)}
               title="Group Settings"
             >
@@ -457,7 +622,7 @@ export default function ChatWindow({ conversation, currentUser, onMessageSent, o
           )}
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="ghost" size="icon" className="text-muted-foreground transition-colors hover:text-primary">
+              <Button variant="ghost" size="icon" className="text-muted-foreground transition-colors hover:text-primary cursor-pointer">
                 <MoreVertical className="w-5 h-5" />
               </Button>
             </DropdownMenuTrigger>
@@ -497,6 +662,22 @@ export default function ChatWindow({ conversation, currentUser, onMessageSent, o
         </div>
       )}
 
+      {/* Date Filter Banner */}
+      {dateFilter && (
+        <div className="px-4 py-2 bg-primary/10 border-b border-primary/20 flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <CalendarDays className="w-4 h-4 text-primary" />
+            <span className="text-xs font-bold text-primary">
+              {loadingFilter ? 'Loading...' : `Showing messages from ${getDateLabel(dateFilter)}`}
+              {filteredMessages && !loadingFilter && ` — ${filteredMessages.length} message(s) found`}
+            </span>
+          </div>
+          <button onClick={clearDateFilter} className="text-primary hover:bg-primary/20 rounded-full p-0.5 transition-colors cursor-pointer">
+            <X className="w-3.5 h-3.5" />
+          </button>
+        </div>
+      )}
+
       {/* Messages Area */}
       <div
         className="flex-1 relative overflow-hidden"
@@ -504,68 +685,122 @@ export default function ChatWindow({ conversation, currentUser, onMessageSent, o
         ref={scrollRef}
         style={{ height: '100%', overflow: 'auto', display: 'flex', flexDirection: 'column-reverse' }}
       >
-        <InfiniteScroll
-          dataLength={messages.length}
-          next={() => { }} // Handle pagination logic here
-          hasMore={false}
-          loader={<div className="flex justify-center p-4"><Loader2 className="w-6 h-6 animate-spin text-primary" /></div>}
-          scrollableTarget="scrollableDiv"
-          inverse={true}
-          style={{ display: 'flex', flexDirection: 'column-reverse', width: '100%' }}
-          className="p-4 w-full"
-        >
-          <div className="space-y-1.5 space-y-reverse flex flex-col-reverse w-full pb-4">
-            {typingUser && (
-              <div className="flex items-center gap-2 text-xs text-muted-foreground ml-12 mb-4 animate-in fade-in slide-in-from-bottom-2">
-                <div className="flex gap-1">
-                  <span className="w-1.5 h-1.5 rounded-full bg-muted-foreground/40 animate-bounce" />
-                  <span className="w-1.5 h-1.5 rounded-full bg-muted-foreground/40 animate-bounce [animation-delay:0.2s]" />
-                  <span className="w-1.5 h-1.5 rounded-full bg-muted-foreground/40 animate-bounce [animation-delay:0.4s]" />
-                </div>
-                <span>{typingUser.name} is typing...</span>
-              </div>
-            )}
-
-            {[...messages].reverse().map((msg, index, reversedArr) => (
-              <motion.div
-                key={msg._id}
-                id={`msg-${msg._id}`}
-                className="w-full p-1"
-                initial={{ opacity: 0, scale: 0.98, y: 5 }}
-                animate={{ opacity: 1, scale: 1, y: 0 }}
-                transition={{ duration: 0.15, ease: "easeOut" }}
-              >
-                <MessageItem
-                  message={msg}
-                  isOwn={toStr(typeof msg.senderId === 'object' ? msg.senderId._id : msg.senderId) === toStr(currentUser?.id || currentUser?._id)}
-                  showAvatar={index === 0 || toStr(typeof reversedArr[index - 1]?.senderId === 'object' ? (reversedArr[index - 1].senderId as { _id: string })._id : reversedArr[index - 1]?.senderId) !== toStr(typeof msg.senderId === 'object' ? (msg.senderId as { _id: string })._id : msg.senderId)}
-                  onReply={() => setReplyingTo(msg)}
-                  onReact={(emoji) => handleReact(msg._id, emoji)}
-                  onEdit={() => setEditingMessage(msg)}
-                  onDelete={() => handleDelete(msg._id)}
-                  onPin={() => handlePin(msg._id, !!msg.isPinned)}
-                  onReplyClick={scrollToMessage}
-                />
-              </motion.div>
-            ))}
-
-            {messages.length === 0 && !loading && (
-              <div className="flex flex-col items-center justify-center p-12 text-center h-full my-auto">
-                <div className="w-16 h-16 bg-muted rounded-full flex items-center justify-center mb-4">
-                  <span className="text-2xl">👋</span>
-                </div>
-                <h4 className="font-medium">No messages yet</h4>
-                <p className="text-sm text-muted-foreground mt-1">Send a message to start the conversation!</p>
-              </div>
-            )}
-
-            {loading && (
-              <div className="flex items-center justify-center p-8">
-                <Loader2 className="w-8 h-8 animate-spin text-primary" />
-              </div>
-            )}
+        {/* Initial chat-switch loading — renders at bottom in reversed layout */}
+        {(loading || loadingFilter) && (
+          <div className="flex flex-col items-center justify-center gap-3 py-16">
+            <Loader2 className="w-8 h-8 animate-spin text-primary" />
+            <p className="text-xs text-muted-foreground font-medium uppercase tracking-widest animate-pulse">
+              {loadingFilter ? 'Filtering messages...' : 'Loading messages...'}
+            </p>
           </div>
-        </InfiniteScroll>
+        )}
+
+        {/* Date Filter Results */}
+        {!loading && !loadingFilter && dateFilter && (
+          <div className="p-4 w-full" style={{ display: 'flex', flexDirection: 'column-reverse' }}>
+            <div className="space-y-1.5 space-y-reverse flex flex-col-reverse w-full pb-4">
+              {filteredMessages && filteredMessages.length > 0 ? (
+                [...filteredMessages].reverse().map((msg, index, reversedArr) => (
+                  <motion.div
+                    key={msg._id}
+                    id={`msg-${msg._id}`}
+                    className="w-full p-1"
+                    initial={{ opacity: 0, scale: 0.98, y: 5 }}
+                    animate={{ opacity: 1, scale: 1, y: 0 }}
+                    transition={{ duration: 0.15, ease: "easeOut" }}
+                  >
+                    <MessageItem
+                      message={msg}
+                      isOwn={toStr(typeof msg.senderId === 'object' ? msg.senderId._id : msg.senderId) === toStr(currentUser?.id || currentUser?._id)}
+                      showAvatar={index === 0 || toStr(typeof reversedArr[index - 1]?.senderId === 'object' ? (reversedArr[index - 1].senderId as { _id: string })._id : reversedArr[index - 1]?.senderId) !== toStr(typeof msg.senderId === 'object' ? (msg.senderId as { _id: string })._id : msg.senderId)}
+                      onReply={() => setReplyingTo(msg)}
+                      onReact={(emoji) => handleReact(msg._id, emoji)}
+                      onEdit={() => setEditingMessage(msg)}
+                      onDelete={() => handleDelete(msg._id)}
+                      onPin={() => handlePin(msg._id, !!msg.isPinned)}
+                      onReplyClick={scrollToMessage}
+                    />
+                  </motion.div>
+                ))
+              ) : (
+                <div className="flex flex-col items-center justify-center p-12 text-center">
+                  <div className="w-16 h-16 bg-muted rounded-full flex items-center justify-center mb-4">
+                    <CalendarDays className="w-8 h-8 text-muted-foreground/40" />
+                  </div>
+                  <h4 className="font-medium">No messages found</h4>
+                  <p className="text-sm text-muted-foreground mt-1">No messages were sent on {getDateLabel(dateFilter)}.</p>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* Normal paginated view */}
+        {!loading && !loadingFilter && !dateFilter && (
+          <InfiniteScroll
+            dataLength={messages.length}
+            next={loadMoreMessages}
+            hasMore={hasMore}
+            loader={
+              loadingMore ? (
+                <div className="flex justify-center items-center gap-2 py-4">
+                  <Loader2 className="w-5 h-5 animate-spin text-primary" />
+                  <span className="text-xs text-muted-foreground">Loading older messages...</span>
+                </div>
+              ) : <></>
+            }
+            scrollableTarget="scrollableDiv"
+            inverse={true}
+            style={{ display: 'flex', flexDirection: 'column-reverse', width: '100%' }}
+            className="p-4 w-full"
+          >
+            <div className="space-y-1.5 space-y-reverse flex flex-col-reverse w-full pb-4">
+              {typingUser && (
+                <div className="flex items-center gap-2 text-xs text-muted-foreground ml-12 mb-4 animate-in fade-in slide-in-from-bottom-2">
+                  <div className="flex gap-1">
+                    <span className="w-1.5 h-1.5 rounded-full bg-muted-foreground/40 animate-bounce" />
+                    <span className="w-1.5 h-1.5 rounded-full bg-muted-foreground/40 animate-bounce [animation-delay:0.2s]" />
+                    <span className="w-1.5 h-1.5 rounded-full bg-muted-foreground/40 animate-bounce [animation-delay:0.4s]" />
+                  </div>
+                  <span>{typingUser.name} is typing...</span>
+                </div>
+              )}
+
+              {[...messages].reverse().map((msg, index, reversedArr) => (
+                <motion.div
+                  key={msg._id}
+                  id={`msg-${msg._id}`}
+                  className="w-full p-1"
+                  initial={{ opacity: 0, scale: 0.98, y: 5 }}
+                  animate={{ opacity: 1, scale: 1, y: 0 }}
+                  transition={{ duration: 0.15, ease: "easeOut" }}
+                >
+                  <MessageItem
+                    message={msg}
+                    isOwn={toStr(typeof msg.senderId === 'object' ? msg.senderId._id : msg.senderId) === toStr(currentUser?.id || currentUser?._id)}
+                    showAvatar={index === 0 || toStr(typeof reversedArr[index - 1]?.senderId === 'object' ? (reversedArr[index - 1].senderId as { _id: string })._id : reversedArr[index - 1]?.senderId) !== toStr(typeof msg.senderId === 'object' ? (msg.senderId as { _id: string })._id : msg.senderId)}
+                    onReply={() => setReplyingTo(msg)}
+                    onReact={(emoji) => handleReact(msg._id, emoji)}
+                    onEdit={() => setEditingMessage(msg)}
+                    onDelete={() => handleDelete(msg._id)}
+                    onPin={() => handlePin(msg._id, !!msg.isPinned)}
+                    onReplyClick={scrollToMessage}
+                  />
+                </motion.div>
+              ))}
+
+              {messages.length === 0 && !loading && (
+                <div className="flex flex-col items-center justify-center p-12 text-center h-full my-auto">
+                  <div className="w-16 h-16 bg-muted rounded-full flex items-center justify-center mb-4">
+                    <span className="text-2xl">👋</span>
+                  </div>
+                  <h4 className="font-medium">No messages yet</h4>
+                  <p className="text-sm text-muted-foreground mt-1">Send a message to start the conversation!</p>
+                </div>
+              )}
+            </div>
+          </InfiniteScroll>
+        )}
       </div>
 
       {/* Input Area */}

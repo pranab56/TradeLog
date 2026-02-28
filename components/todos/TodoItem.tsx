@@ -51,7 +51,7 @@ export default function TodoItem({ todo, onToggle, onDelete, isToggling, isDelet
             )}
           </button>
           <span className={cn(
-            "text-base md:text-lg font-bold transition-all truncate max-w-[50vw] sm:max-w-none",
+            "text-base md:text-lg font-medium transition-all truncate max-w-[50vw] sm:max-w-none",
             !todo.completed ? "text-foreground" : "text-muted-foreground/60"
           )}>
             {todo.task}

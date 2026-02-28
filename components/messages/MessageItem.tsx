@@ -18,7 +18,7 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { cn } from '@/lib/utils';
-import dayjs from 'dayjs';
+import dayjs from '@/lib/dayjs';
 import EmojiPicker, { Theme } from 'emoji-picker-react';
 import {
   Check,
@@ -375,7 +375,7 @@ function MessageActions({
         }}
       >
         <PopoverTrigger asChild>
-          <button className="p-1.5 rounded-full hover:bg-muted text-muted-foreground transition-colors group-hover:text-primary">
+          <button className="p-1.5 rounded-full hover:bg-muted text-muted-foreground transition-colors group-hover:text-primary cursor-pointer">
             <Smile className="w-4 h-4" />
           </button>
         </PopoverTrigger>
@@ -395,7 +395,7 @@ function MessageActions({
                     onReact?.(emoji);
                     setOpen(false);
                   }}
-                  className="hover:scale-125 transition-transform p-1.5 text-lg leading-none"
+                  className="hover:scale-125 transition-transform p-1.5 text-lg leading-none cursor-pointer"
                 >
                   {emoji}
                 </button>
@@ -406,7 +406,7 @@ function MessageActions({
                   e.stopPropagation();
                   setShowPicker(true);
                 }}
-                className="hover:bg-muted rounded-full p-1.5 text-muted-foreground transition-colors"
+                className="hover:bg-muted rounded-full p-1.5 text-muted-foreground transition-colors cursor-pointer"
                 title="More emojis"
               >
                 <Plus className="w-5 h-5" />
@@ -429,7 +429,7 @@ function MessageActions({
 
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
-          <button className="p-1.5 rounded-full hover:bg-muted text-muted-foreground transition-colors">
+          <button className="p-1.5 rounded-full hover:bg-muted text-muted-foreground transition-colors cursor-pointer">
             <MoreHorizontal className="w-4 h-4" />
           </button>
         </DropdownMenuTrigger>

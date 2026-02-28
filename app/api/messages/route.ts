@@ -10,6 +10,7 @@ export async function GET(req: Request) {
     const conversationId = searchParams.get('conversationId');
     const page = parseInt(searchParams.get('page') || '1');
     const limit = parseInt(searchParams.get('limit') || '50');
+    const dateFilter = searchParams.get('date'); // YYYY-MM-DD format
 
     if (!conversationId) return NextResponse.json({ error: 'Conversation ID required' }, { status: 400 });
 
@@ -20,11 +21,23 @@ export async function GET(req: Request) {
 
     const db = await getDb('tradelog_main');
 
-    const messages = await db.collection('messages').aggregate([
-      { $match: { conversationId: new ObjectId(conversationId), isDeleted: { $ne: true } } },
+    // Build match stage
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const matchStage: any = {
+      conversationId: new ObjectId(conversationId),
+      isDeleted: { $ne: true }
+    };
+
+    if (dateFilter) {
+      const start = new Date(dateFilter + 'T00:00:00.000Z');
+      const end = new Date(dateFilter + 'T23:59:59.999Z');
+      matchStage.createdAt = { $gte: start, $lte: end };
+    }
+
+    const pipeline = [
+      { $match: matchStage },
       { $sort: { createdAt: -1 } },
-      { $skip: (page - 1) * limit },
-      { $limit: limit },
+      ...(dateFilter ? [] : [{ $skip: (page - 1) * limit }, { $limit: limit }]),
       {
         $lookup: {
           from: 'users',
@@ -94,11 +107,13 @@ export async function GET(req: Request) {
           }
         }
       }
-    ]).toArray();
+    ];
+
+    const messages = await db.collection('messages').aggregate(pipeline).toArray();
 
     return NextResponse.json({
       messages: messages.reverse(),
-      hasMore: messages.length === limit
+      hasMore: dateFilter ? false : messages.length === limit
     });
   } catch (error) {
     console.error('Fetch messages error:', error);

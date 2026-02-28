@@ -47,7 +47,10 @@ export default function Header({ onOpenSidebar }: HeaderProps) {
           <span className="text-muted-foreground">
             {format(time, 'HH:mm:ss')}
           </span>
-          <span className="text-[10px] text-muted-foreground/50 ml-1">UTC+6</span>
+          <span className="text-[10px] text-muted-foreground/50 ml-1 font-bold">
+            {Intl.DateTimeFormat().resolvedOptions().timeZone.includes('Dhaka') ? 'BD TIME' :
+              Intl.DateTimeFormat().resolvedOptions().timeZone.split('/').pop()?.replace('_', ' ') || 'LOCAL'}
+          </span>
         </div>
 
         {mounted && (

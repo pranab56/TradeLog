@@ -26,7 +26,7 @@ const SettingsActionBar = ({
       </div>
       <div className="flex flex-col sm:flex-row md:items-center gap-4 w-full">
         <div className="flex-1">
-          <p className="text-muted-foreground text-[10px] md:text-sm font-black uppercase tracking-widest flex items-center bg-accent/10 px-4 md:px-5 py-2.5 md:py-2 rounded-xl border border-border/50 w-full sm:w-fit justify-center sm:justify-start">
+          <p className="text-muted-foreground text-[10px] md:text-sm font-medium flex items-center bg-accent/10 px-4 md:px-5 py-2.5 md:py-2 rounded-xl border border-border/50 w-full sm:w-fit justify-center sm:justify-start">
             <Clock className="w-3.5 h-3.5 md:w-4 md:h-4 mr-2 text-primary" />
             Session: {sessionDate ? format(sessionDate, 'MMMM yyyy') : 'N/A'}
           </p>

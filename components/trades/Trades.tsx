@@ -103,11 +103,12 @@ export default function Trades() {
   }, [search]);
 
   const filteredRecords = useMemo(() => {
-    if (!search) return records;
+    const allRecords = [...records].reverse();
+    if (!search) return allRecords;
 
     const searchTerm = search.toLowerCase();
 
-    return records.filter((r: TradeRecord) => {
+    return allRecords.filter((r: TradeRecord) => {
       const dateStr = r.date.split('T')[0];
       const [year, month, day] = dateStr.split('-');
 
@@ -409,32 +410,32 @@ export default function Trades() {
       >
         <AlertDialogPortal>
           <AlertDialogOverlay className="backdrop-blur-sm bg-black/40" />
-          <AlertDialogContent className="w-[90%] max-w-sm rounded-2xl p-6 outline-none flex flex-col items-center border-border shadow-2xl">
+          <AlertDialogContent className="w-[90%] max-w-sm mx-auto rounded-2xl p-6 outline-none flex flex-col items-center border-border shadow-2xl">
 
-            <AlertDialogHeader className="flex flex-col items-center text-center w-full space-y-4">
+            <div className="flex flex-col justify-center items-center text-center w-full space-y-4">
               {/* ICON */}
-              <div className="w-16 h-16 md:w-20 md:h-20 bg-loss/10 rounded-full flex items-center justify-center text-loss shadow-inner animate-pulse">
+              <div className="w-16 h-16 md:w-20 md:h-20 bg-loss/10 rounded-full flex  items-center justify-center text-loss shadow-inner animate-pulse">
                 <Trash2 size={28} className="md:w-8 md:h-8" />
               </div>
 
               {/* TEXT */}
               <div className="space-y-1.5">
-                <AlertDialogTitle className="text-lg md:text-xl font-bold">
+                <AlertDialogTitle className="text-lg md:text-xl font-bold text-center">
                   Delete Record?
                 </AlertDialogTitle>
-                <p className="text-xs md:text-sm text-muted-foreground font-medium">
+                <p className="text-xs md:text-sm text-muted-foreground text-center font-medium">
                   This action is permanent and will affect your dashboard stats.
                 </p>
               </div>
-            </AlertDialogHeader>
+            </div>
 
             <AlertDialogFooter className="mt-6 flex flex-col sm:flex-row items-center justify-center gap-3 w-full">
-              <AlertDialogCancel className="w-full sm:w-auto rounded-xl font-bold uppercase tracking-widest px-6 py-2.5 h-auto cursor-pointer border-border hover:bg-accent transition-all text-[10px] m-0 order-2 sm:order-1">
+              <AlertDialogCancel className="w-full sm:w-auto rounded-xl font-bold uppercase tracking-widest px-6 py-2.5 h-auto cursor-pointer border-border hover:bg-accent hover:text-red-500 transition-all text-[10px] m-0 order-2 sm:order-1">
                 Cancel
               </AlertDialogCancel>
               <AlertDialogAction
                 onClick={handleDelete}
-                className="w-full sm:w-auto bg-loss hover:bg-loss/90 text-white cursor-pointer rounded-xl font-bold uppercase tracking-widest px-6 py-2.5 h-auto shadow-lg shadow-loss/20 transition-all active:scale-[0.98] text-[10px] m-0 order-1 sm:order-2"
+                className="w-full sm:w-auto bg-red-500 hover:bg-red-600 text-white cursor-pointer rounded-xl font-bold uppercase tracking-widest px-6 py-2.5 h-auto shadow-lg shadow-red-500/20 transition-all active:scale-[0.98] text-[10px] m-0 order-1 sm:order-2"
               >
                 Confirm Delete
               </AlertDialogAction>
