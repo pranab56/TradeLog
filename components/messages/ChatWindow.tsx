@@ -23,6 +23,8 @@ import {
   ArrowLeft,
   Loader2,
   MoreVertical,
+  Pin,
+  Settings,
   Trash2
 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
@@ -30,6 +32,7 @@ import { useEffect, useRef, useState } from 'react';
 import InfiniteScroll from 'react-infinite-scroll-component';
 import { toast } from 'sonner';
 import CallOverlay from './CallOverlay';
+import GroupSettingsModal from './GroupSettingsModal';
 import MessageInput from './MessageInput';
 import MessageItem from './MessageItem';
 
@@ -61,6 +64,7 @@ export default function ChatWindow({ conversation, currentUser, onMessageSent, o
   const [editingMessage, setEditingMessage] = useState<any>(null);
   const [isCalling, setIsCalling] = useState(false);
   const [showDeleteChatModal, setShowDeleteChatModal] = useState(false);
+  const [showGroupSettings, setShowGroupSettings] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
   const router = useRouter();
 
@@ -113,11 +117,18 @@ export default function ChatWindow({ conversation, currentUser, onMessageSent, o
     };
 
     const onMessageDeleted = (data: any) => {
-      setMessages(prev => prev.map(m => toStr(m._id) === toStr(data.messageId) ? { ...m, content: 'This message was deleted', isDeleted: true } : m));
+      setMessages(prev => prev.filter(m => toStr(m._id) !== toStr(data.messageId)));
     };
 
     const onMessageReacted = (updatedMessage: any) => {
       setMessages(prev => prev.map(m => toStr(m._id) === toStr(updatedMessage._id) ? updatedMessage : m));
+
+      // Play sound when someone reacts
+      const playReactSound = () => {
+        const audio = new Audio('/audio/audio.mp3');
+        audio.play().catch(err => console.log('Audio playback prevented by browser:', err));
+      };
+      playReactSound();
     };
 
     const onMessageRead = (data: any) => {
@@ -184,6 +195,19 @@ export default function ChatWindow({ conversation, currentUser, onMessageSent, o
     }
   };
 
+  const scrollToMessage = (msgId: string) => {
+    const el = document.getElementById(`msg-${msgId}`);
+    if (el) {
+      el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      el.classList.add('bg-primary/20', 'transition-colors', 'duration-500', 'rounded-lg');
+      setTimeout(() => el.classList.remove('bg-primary/20', 'transition-colors', 'duration-500', 'rounded-lg'), 2000);
+    } else {
+      toast.error('Please scroll up more to load this message.');
+    }
+  };
+
+  const pinnedMessages = messages.filter(m => m.isPinned);
+
   const handleSendMessage = async (content: string, type: string = 'text', mediaUrl?: string) => {
     try {
       if (editingMessage) {
@@ -192,10 +216,22 @@ export default function ChatWindow({ conversation, currentUser, onMessageSent, o
           type: 'edit',
           content
         });
-        const updatedMessage = res.data.message;
-        setMessages(prev => prev.map(m => m._id === updatedMessage._id ? updatedMessage : m));
+        const updatedFromApi = res.data.message;
+
+        setMessages(prev => prev.map(m => {
+          if (m._id === editingMessage._id) {
+            const updated = {
+              ...m,
+              content: updatedFromApi.content,
+              isEdited: updatedFromApi.isEdited,
+              updatedAt: updatedFromApi.updatedAt
+            };
+            if (socket) socket.emit('edit-message', updated);
+            return updated;
+          }
+          return m;
+        }));
         setEditingMessage(null);
-        if (socket) socket.emit('edit-message', updatedMessage);
         return;
       }
 
@@ -235,6 +271,10 @@ export default function ChatWindow({ conversation, currentUser, onMessageSent, o
 
   const handleReact = async (messageId: string, emoji: string) => {
     try {
+      // Optimistic or immediate sound
+      const audio = new Audio('/audio/audio.mp3');
+      audio.play().catch(e => console.log('Audio playback prevented by browser:', e));
+
       const res = await axios.patch('/api/messages', { messageId, type: 'react', emoji });
       const updatedReactions = res.data.message.reactions;
 
@@ -252,11 +292,41 @@ export default function ChatWindow({ conversation, currentUser, onMessageSent, o
     }
   };
 
+  const handlePin = async (messageId: string, currentPinStatus: boolean) => {
+    try {
+      const newPinStatus = !currentPinStatus;
+
+      if (newPinStatus) {
+        const currentPinnedCount = messages.filter(m => m.isPinned).length;
+        if (currentPinnedCount >= 3) {
+          toast.error('You can only pin up to 3 messages.');
+          return;
+        }
+      }
+
+      await axios.patch('/api/messages', { messageId, type: 'pin', isPinned: newPinStatus });
+      setMessages(prev => {
+        const newMessages = prev.map(m => {
+          if (m._id === messageId) {
+            const updated = { ...m, isPinned: newPinStatus };
+            if (socket) socket.emit('edit-message', updated);
+            return updated;
+          }
+          return m;
+        });
+        return newMessages;
+      });
+    } catch (err: any) {
+      console.error('Pin error', err);
+      toast.error(err.response?.data?.error || 'Failed to pin message');
+    }
+  };
+
   const handleDelete = async (messageId: string) => {
     if (!confirm('Are you sure you want to delete this message?')) return;
     try {
       await axios.delete(`/api/messages?messageId=${messageId}`);
-      setMessages(prev => prev.map(m => m._id === messageId ? { ...m, content: 'This message was deleted', isDeleted: true } : m));
+      setMessages(prev => prev.filter(m => m._id !== messageId));
       if (socket) socket.emit('delete-message', { conversationId: conversation._id, messageId });
     } catch (err) {
       console.error('Delete error', err);
@@ -320,6 +390,17 @@ export default function ChatWindow({ conversation, currentUser, onMessageSent, o
           </div>
         </div>
         <div className="flex items-center gap-1">
+          {conversation.isGroup && (
+            <Button
+              variant="ghost"
+              size="icon"
+              className="text-muted-foreground transition-colors hover:text-primary"
+              onClick={() => setShowGroupSettings(true)}
+              title="Group Settings"
+            >
+              <Settings className="w-5 h-5" />
+            </Button>
+          )}
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button variant="ghost" size="icon" className="text-muted-foreground transition-colors hover:text-primary">
@@ -337,6 +418,30 @@ export default function ChatWindow({ conversation, currentUser, onMessageSent, o
           </DropdownMenu>
         </div>
       </div>
+
+      {pinnedMessages.length > 0 && (
+        <div className="flex flex-col z-10 border-b">
+          {pinnedMessages.map((pinnedMsg, index) => (
+            <div
+              key={pinnedMsg._id}
+              className="px-4 py-2 bg-card/60 backdrop-blur-md flex items-center gap-3 cursor-pointer hover:bg-muted/50 transition-colors shadow-sm"
+              onClick={() => scrollToMessage(pinnedMsg._id)}
+            >
+              <div className="p-1.5 bg-primary/10 rounded-full text-primary shrink-0">
+                <Pin className="w-4 h-4 fill-current" />
+              </div>
+              <div className="flex-1 overflow-hidden">
+                <p className="text-[11px] font-bold text-primary uppercase tracking-tight">
+                  Pinned Message {pinnedMessages.length > 1 ? `(${index + 1}/${pinnedMessages.length})` : ''}
+                </p>
+                <p className="text-sm truncate text-muted-foreground font-medium">
+                  {pinnedMsg.messageType === 'text' ? pinnedMsg.content : `[${pinnedMsg.messageType}]`}
+                </p>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
 
       {/* Messages Area */}
       <div
@@ -370,7 +475,8 @@ export default function ChatWindow({ conversation, currentUser, onMessageSent, o
             {[...messages].reverse().map((msg, index, reversedArr) => (
               <motion.div
                 key={msg._id}
-                className="w-full"
+                id={`msg-${msg._id}`}
+                className="w-full p-1"
                 initial={{ opacity: 0, scale: 0.98, y: 5 }}
                 animate={{ opacity: 1, scale: 1, y: 0 }}
                 transition={{ duration: 0.15, ease: "easeOut" }}
@@ -383,6 +489,8 @@ export default function ChatWindow({ conversation, currentUser, onMessageSent, o
                   onReact={(emoji) => handleReact(msg._id, emoji)}
                   onEdit={() => setEditingMessage(msg)}
                   onDelete={() => handleDelete(msg._id)}
+                  onPin={() => handlePin(msg._id, msg.isPinned)}
+                  onReplyClick={scrollToMessage}
                 />
               </motion.div>
             ))}
@@ -461,6 +569,15 @@ export default function ChatWindow({ conversation, currentUser, onMessageSent, o
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {conversation.isGroup && (
+        <GroupSettingsModal
+          isOpen={showGroupSettings}
+          onClose={() => setShowGroupSettings(false)}
+          conversation={conversation}
+          onUpdate={() => router.refresh()}
+        />
+      )}
     </div>
   );
 }

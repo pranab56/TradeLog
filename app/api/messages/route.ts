@@ -21,7 +21,7 @@ export async function GET(req: Request) {
     const db = await getDb('tradelog_main');
 
     const messages = await db.collection('messages').aggregate([
-      { $match: { conversationId: new ObjectId(conversationId) } },
+      { $match: { conversationId: new ObjectId(conversationId), isDeleted: { $ne: true } } },
       { $sort: { createdAt: -1 } },
       { $skip: (page - 1) * limit },
       { $limit: limit },
@@ -83,6 +83,7 @@ export async function GET(req: Request) {
           reactions: 1,
           isEdited: 1,
           isDeleted: 1,
+          isPinned: 1,
           readBy: 1,
           status: {
             $cond: {
@@ -137,6 +138,7 @@ export async function POST(req: Request) {
       reactions: [],
       isEdited: false,
       isDeleted: false,
+      isPinned: false,
       createdAt: new Date(),
       updatedAt: new Date()
     };
@@ -171,6 +173,7 @@ export async function POST(req: Request) {
         reactions: [],
         isEdited: false,
         isDeleted: false,
+        isPinned: false,
         createdAt: newMessage.createdAt,
         updatedAt: newMessage.updatedAt,
       }
@@ -188,7 +191,7 @@ export async function PATCH(req: Request) {
     if (!token) return NextResponse.json({ error: 'Not authenticated' }, { status: 401 });
 
     const decoded: any = verifyToken(token);
-    const { messageId, type, content, emoji } = await req.json();
+    const { messageId, type, content, emoji, isPinned } = await req.json();
 
     const db = await getDb('tradelog_main');
     const user = await db.collection('users').findOne({ email: decoded.email });
@@ -224,6 +227,11 @@ export async function PATCH(req: Request) {
         { _id: new ObjectId(messageId) },
         { $set: { reactions, updatedAt: new Date() } }
       );
+    } else if (type === 'pin') {
+      await db.collection('messages').updateOne(
+        { _id: new ObjectId(messageId) },
+        { $set: { isPinned, updatedAt: new Date() } }
+      );
     }
 
     const updatedMessage = await db.collection('messages').findOne({ _id: new ObjectId(messageId) });
@@ -248,12 +256,11 @@ export async function DELETE(req: Request) {
     const user = await db.collection('users').findOne({ email: decoded.email });
     if (!user) return NextResponse.json({ error: 'User not found' }, { status: 404 });
 
-    const result = await db.collection('messages').updateOne(
-      { _id: new ObjectId(messageId as string), senderId: user._id },
-      { $set: { content: 'This message was deleted', isDeleted: true, updatedAt: new Date() } }
+    const result = await db.collection('messages').deleteOne(
+      { _id: new ObjectId(messageId as string), senderId: user._id }
     );
 
-    if (result.matchedCount === 0) return NextResponse.json({ error: 'Message not found or unauthorized' }, { status: 404 });
+    if (result.deletedCount === 0) return NextResponse.json({ error: 'Message not found or unauthorized' }, { status: 404 });
 
     return NextResponse.json({ message: 'Message deleted successfully' });
   } catch (error) {

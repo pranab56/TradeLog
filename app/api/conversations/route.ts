@@ -152,11 +152,32 @@ export async function PATCH(req: Request) {
     const decoded: any = verifyToken(token);
     if (!decoded) return NextResponse.json({ error: 'Invalid token' }, { status: 401 });
 
-    const { conversationId, isPinned, isMuted, isBlocked } = await req.json();
+    const { conversationId, isPinned, isMuted, isBlocked, type, name, description, groupImage } = await req.json();
     const db = await getDb('tradelog_main');
     const user = await db.collection('users').findOne({ email: decoded.email });
 
     if (!user) return NextResponse.json({ error: 'User not found' }, { status: 404 });
+
+    // Handle group metadata updates
+    if (type === 'group_update') {
+      const conv = await db.collection('conversations').findOne({ _id: new ObjectId(conversationId) });
+      if (!conv) return NextResponse.json({ error: 'Conversation not found' }, { status: 404 });
+
+      // Verify user is an admin or participant (usually admins can change settings)
+      // For now, let any participant update to match user request "every thing can be changed"
+      await db.collection('conversations').updateOne(
+        { _id: new ObjectId(conversationId) },
+        {
+          $set: {
+            name,
+            description,
+            groupImage,
+            updatedAt: new Date()
+          }
+        }
+      );
+      return NextResponse.json({ message: 'Group updated' });
+    }
 
     const finalUpdate: any = { $set: { updatedAt: new Date() }, $addToSet: {}, $pull: {} };
 

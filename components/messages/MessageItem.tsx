@@ -23,6 +23,7 @@ import EmojiPicker from 'emoji-picker-react';
 import {
   Check,
   CheckCheck,
+  Download,
   Edit2,
   FileText,
   MoreHorizontal,
@@ -44,6 +45,8 @@ interface MessageItemProps {
   onReact?: (emoji: string) => void;
   onEdit?: () => void;
   onDelete?: () => void;
+  onPin?: () => void;
+  onReplyClick?: (msgId: string) => void;
 }
 
 export default function MessageItem({
@@ -53,8 +56,31 @@ export default function MessageItem({
   onReply,
   onReact,
   onEdit,
-  onDelete
+  onDelete,
+  onPin,
+  onReplyClick
 }: MessageItemProps) {
+  const [showReactorsModal, setShowReactorsModal] = useState(false);
+  const [selectedImage, setSelectedImage] = useState<string | null>(null);
+
+  const handleDownload = async (url: string) => {
+    try {
+      const response = await fetch(url);
+      const blob = await response.blob();
+      const blobUrl = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = blobUrl;
+      a.download = `image-${Date.now()}.png`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      window.URL.revokeObjectURL(blobUrl);
+    } catch (error) {
+      console.error('Download failed', error);
+      window.open(url, '_blank');
+    }
+  };
+
   const isText = message.messageType === 'text';
   const isImage = message.messageType === 'image';
   const isDocument = message.messageType === 'document';
@@ -107,6 +133,8 @@ export default function MessageItem({
                 onEdit={onEdit}
                 onDelete={onDelete}
                 onReact={onReact}
+                onPin={onPin}
+                isPinned={message.isPinned}
               />
             </div>
           )}
@@ -127,10 +155,13 @@ export default function MessageItem({
           )}>
             {/* Reply Context */}
             {(message.replyTo && message.replyTo.senderName) && (
-              <div className={cn(
-                "mb-2 p-2 rounded-lg text-xs border-l-4 bg-black/5 flex flex-col gap-0.5",
-                isOwn ? "border-primary-foreground/50" : "border-primary/50"
-              )}>
+              <div
+                onClick={() => onReplyClick?.(message.replyTo._id)}
+                className={cn(
+                  "mb-2 p-2 rounded-lg text-xs border-l-4 bg-black/5 flex flex-col gap-0.5 cursor-pointer hover:opacity-80 transition-opacity",
+                  isOwn ? "border-primary-foreground/50" : "border-primary/50"
+                )}
+              >
                 <span className="font-bold opacity-80">{message.replyTo.senderName}</span>
                 <p className="line-clamp-1 italic text-[11px]">
                   {message.replyTo.messageType === 'text' ? message.replyTo.content : 'Image'}
@@ -146,6 +177,7 @@ export default function MessageItem({
                   src={message.mediaUrl}
                   alt="Image"
                   className="rounded-xl max-w-full h-auto object-cover max-h-80 transition-transform hover:scale-[1.02] cursor-pointer"
+                  onClick={() => setSelectedImage(message.mediaUrl)}
                 />
                 {message.content && message.content !== 'Photo' && message.content !== 'Sent an image' && (
                   <p className="leading-snug whitespace-pre-wrap text-[15px] px-1 pb-1 pt-1">{message.content}</p>
@@ -200,11 +232,12 @@ export default function MessageItem({
             {message.reactions && message.reactions.length > 0 && (
               <div className={cn(
                 "absolute -bottom-3 flex flex-wrap gap-1 z-20",
-                isOwn ? "right-0" : "left-0"
+                isOwn ? "left-0" : "right-0"
               )}>
                 {message.reactions.map((r: any, idx: number) => (
                   <div
                     key={idx}
+                    onClick={() => setShowReactorsModal(true)}
                     className="bg-background border rounded-full px-1.5 py-0.5 text-[10px] shadow-sm flex items-center gap-1 hover:scale-110 transition-transform cursor-pointer"
                     title={r.userName || r.userId}
                   >
@@ -223,37 +256,96 @@ export default function MessageItem({
                 onEdit={onEdit}
                 onDelete={onDelete}
                 onReact={onReact}
+                onPin={onPin}
+                isPinned={message.isPinned}
               />
             </div>
           )}
         </div>
       </div>
+
+      <Dialog open={showReactorsModal} onOpenChange={setShowReactorsModal}>
+        <DialogContent className="max-w-xs rounded-2xl p-4">
+          <DialogHeader>
+            <DialogTitle className="text-sm font-semibold">Message Reactions</DialogTitle>
+          </DialogHeader>
+          <div className="flex flex-col gap-2 mt-2 max-h-[300px] overflow-y-auto pr-1">
+            {message.reactions?.map((r: any, i: number) => (
+              <div key={i} className="flex items-center justify-between p-2 rounded-lg bg-muted/40">
+                <span className="text-sm font-medium">{r.userName || 'User'}</span>
+                <span className="text-xl">{r.emoji}</span>
+              </div>
+            ))}
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={!!selectedImage} onOpenChange={(open) => !open && setSelectedImage(null)}>
+        <DialogContent className="max-w-[90vw] md:max-w-[65vw] max-h-[85vh] p-0 border-none bg-black/95 flex flex-col items-center justify-center shadow-2xl overflow-hidden rounded-xl">
+          <DialogHeader className="sr-only">
+            <DialogTitle>View Image</DialogTitle>
+            <DialogDescription>A full screen view of the selected image.</DialogDescription>
+          </DialogHeader>
+          {selectedImage && (
+            <div className="relative w-full h-[80vh] flex items-center justify-center group/modal">
+              <img
+                src={selectedImage}
+                alt="Zoomed"
+                className="max-w-full max-h-full object-contain"
+              />
+              <div className="absolute top-4 right-14 flex gap-2 transition-opacity duration-300">
+                <Button
+                  variant="secondary"
+                  size="icon"
+                  className="rounded-full bg-black/50 hover:bg-black/70 text-white border border-white/20"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleDownload(selectedImage);
+                  }}
+                  title="Download Image"
+                >
+                  <Download className="w-5 h-5" />
+                </Button>
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
 
 function MessageActions({
   isOwn,
+  isPinned,
   onReply,
   onEdit,
   onDelete,
-  onReact
+  onReact,
+  onPin
 }: {
   isOwn: boolean;
+  isPinned?: boolean;
   onReply?: () => void;
   onEdit?: () => void;
   onDelete?: () => void;
   onReact?: (emoji: string) => void;
+  onPin?: () => void;
 }) {
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [showPicker, setShowPicker] = useState(false);
+  const [open, setOpen] = useState(false);
   const emojis = ['👍', '❤️', '😂', '😮', '😢'];
 
   return (
     <div className="flex items-center gap-1">
-      <Popover onOpenChange={(open) => {
-        if (!open) setTimeout(() => setShowPicker(false), 200);
-      }}>
+      <Popover
+        open={open}
+        onOpenChange={(val) => {
+          setOpen(val);
+          if (!val) setTimeout(() => setShowPicker(false), 200);
+        }}
+      >
         <PopoverTrigger asChild>
           <button className="p-1.5 rounded-full hover:bg-muted text-muted-foreground transition-colors group-hover:text-primary">
             <Smile className="w-4 h-4" />
@@ -271,7 +363,10 @@ function MessageActions({
               {emojis.map(emoji => (
                 <button
                   key={emoji}
-                  onClick={() => onReact?.(emoji)}
+                  onClick={() => {
+                    onReact?.(emoji);
+                    setOpen(false);
+                  }}
                   className="hover:scale-125 transition-transform p-1.5 text-lg leading-none"
                 >
                   {emoji}
@@ -293,6 +388,7 @@ function MessageActions({
             <EmojiPicker
               onEmojiClick={(emojiData: any) => {
                 onReact?.(emojiData.emoji);
+                setOpen(false);
               }}
               theme={'light' as any}
               width={300}
@@ -313,8 +409,8 @@ function MessageActions({
           <DropdownMenuItem className="gap-2 cursor-pointer" onClick={onReply}>
             <Reply className="w-4 h-4" /> Reply
           </DropdownMenuItem>
-          <DropdownMenuItem className="gap-2 cursor-pointer">
-            <Pin className="w-4 h-4" /> Pin
+          <DropdownMenuItem className="gap-2 cursor-pointer" onClick={onPin}>
+            <Pin className="w-4 h-4" /> {isPinned ? 'Unpin' : 'Pin'}
           </DropdownMenuItem>
           {isOwn && (
             <>

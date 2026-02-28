@@ -207,6 +207,34 @@ export default function MessagesPage() {
       }));
     };
 
+    const onGroupUpdated = (data: any) => {
+      console.log('[MessagesPage] group-updated received:', data);
+
+      // 1. Update conversations list
+      setConversations(prev => prev.map(conv => {
+        if (toStr(conv._id) === toStr(data.conversationId)) {
+          return {
+            ...conv,
+            name: data.name,
+            description: data.description,
+            groupImage: data.groupImage,
+            updatedAt: new Date()
+          };
+        }
+        return conv;
+      }));
+
+      // 2. Update selected conversation if it matches
+      if (selectedConvRef.current && toStr(selectedConvRef.current?._id) === toStr(data.conversationId)) {
+        setSelectedConversation((prev: any) => ({
+          ...prev,
+          name: data.name,
+          description: data.description,
+          groupImage: data.groupImage
+        }));
+      }
+    };
+
     socket.on('receive-message', onReceiveMessage);
     socket.on('new-message-notification', onNewMessageNotification);
     socket.on('receive-invite', onReceiveInvite);
@@ -215,6 +243,7 @@ export default function MessagesPage() {
     socket.on('conversation-deleted', onConversationDeleted);
     socket.on('presence-update', onPresenceUpdate);
     socket.on('message-read', onMessageRead);
+    socket.on('group-updated', onGroupUpdated);
 
     return () => {
       socket.off('receive-message', onReceiveMessage);
@@ -225,6 +254,7 @@ export default function MessagesPage() {
       socket.off('conversation-deleted', onConversationDeleted);
       socket.off('presence-update', onPresenceUpdate);
       socket.off('message-read', onMessageRead);
+      socket.off('group-updated', onGroupUpdated);
     };
   }, [socket]);
 
