@@ -33,6 +33,8 @@ export async function GET() {
           _id: 1,
           status: 1,
           createdAt: 1,
+          senderId: 1,
+          receiverId: 1,
           'sender.name': 1,
           'sender.email': 1,
           'sender.profileImage': 1
@@ -91,10 +93,50 @@ export async function PATCH(req: Request) {
     }
 
     const db = await getDb('tradelog_main');
+    const request = await db.collection('message_requests').findOne({ _id: new ObjectId(requestId) });
+
+    if (!request) return NextResponse.json({ error: 'Request not found' }, { status: 404 });
+
     await db.collection('message_requests').updateOne(
       { _id: new ObjectId(requestId) },
       { $set: { status, updatedAt: new Date() } }
     );
+
+    // If accepted, create conversation
+    if (status === 'accepted') {
+      const participants = [request.senderId, request.receiverId];
+
+      // Check if conversation already exists
+      const existing = await db.collection('conversations').findOne({
+        isGroup: false,
+        participants: { $all: participants, $size: 2 }
+      });
+
+      if (!existing) {
+        console.log('Creating new conversation between', participants);
+        const newConversation = {
+          participants,
+          isGroup: false,
+          pinnedBy: [],
+          mutedBy: [],
+          blockedBy: [],
+          deletedBy: [],
+          createdAt: new Date(),
+          updatedAt: new Date(),
+          lastMessageId: null
+        };
+        await db.collection('conversations').insertOne(newConversation);
+      } else {
+        console.log('Conversation already exists, restoring it:', existing._id);
+        await db.collection('conversations').updateOne(
+          { _id: existing._id },
+          {
+            $pull: { deletedBy: { $in: participants } } as any,
+            $set: { updatedAt: new Date() }
+          }
+        );
+      }
+    }
 
     return NextResponse.json({ message: `Request ${status}` });
   } catch (error) {

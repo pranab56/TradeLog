@@ -9,9 +9,11 @@ import {
   DialogTitle
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
+import { useSocket } from '@/providers/socket-provider';
 import axios from 'axios';
-import { Loader2, Search, Send, UserPlus } from 'lucide-react';
+import { Loader2, Search, UserPlus } from 'lucide-react';
 import { useEffect, useState } from 'react';
+import { toast } from 'sonner';
 
 interface SearchUsersProps {
   isOpen: boolean;
@@ -21,6 +23,7 @@ interface SearchUsersProps {
 }
 
 export default function SearchUsers({ isOpen, onClose, onSelect, currentUser }: SearchUsersProps) {
+  const { socket } = useSocket();
   const [query, setQuery] = useState('');
   const [results, setResults] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
@@ -56,11 +59,20 @@ export default function SearchUsers({ isOpen, onClose, onSelect, currentUser }: 
       await axios.post('/api/requests', {
         receiverId: user._id
       });
-      alert(`Message request sent to ${user.name}! They must accept it before you can start messaging.`);
+
+      if (socket) {
+        socket.emit('new-invite', {
+          receiverId: user._id,
+          senderName: currentUser.name,
+          senderId: currentUser.id
+        });
+      }
+
+      toast.success(`Message request sent to ${user.name}!`);
       onClose();
     } catch (err: any) {
       console.error('Error sending request', err);
-      alert(err.response?.data?.error || 'Failed to send message request');
+      toast.error(err.response?.data?.error || 'Failed to send message request');
     } finally {
       setRequestingId(null);
     }
@@ -120,13 +132,13 @@ export default function SearchUsers({ isOpen, onClose, onSelect, currentUser }: 
                     size="sm"
                     onClick={() => handleSendRequest(user)}
                     disabled={requestingId === user._id}
-                    className="rounded-xl gap-2 font-semibold shadow-sm px-4"
+                    className="rounded-xl gap-2 font-semibold shadow-md px-5 bg-primary hover:bg-primary/90 transition-all hover:scale-105 active:scale-95"
                   >
                     {requestingId === user._id ? (
                       <Loader2 className="w-4 h-4 animate-spin" />
                     ) : (
                       <>
-                        <Send className="w-4 h-4" /> Request
+                        <UserPlus className="w-4 h-4" /> Invite
                       </>
                     )}
                   </Button>

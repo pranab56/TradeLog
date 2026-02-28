@@ -7,7 +7,10 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { useSocket } from '@/providers/socket-provider';
+import data from '@emoji-mart/data';
+import Picker from '@emoji-mart/react';
 import {
   Edit2,
   Image as ImageIcon,
@@ -209,9 +212,22 @@ export default function MessageInput({
               target.style.height = `${Math.min(target.scrollHeight, 128)}px`;
             }}
           />
-          <Button variant="ghost" size="icon" className="absolute right-2 text-muted-foreground hover:text-primary transition-colors">
-            <Smile className="w-5 h-5" />
-          </Button>
+          <Popover>
+            <PopoverTrigger asChild>
+              <Button variant="ghost" size="icon" className="absolute right-2 text-muted-foreground hover:text-primary transition-colors">
+                <Smile className="w-5 h-5" />
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent side="top" align="end" className="p-0 border-none shadow-2xl rounded-2xl overflow-hidden mb-4">
+              <Picker
+                data={data}
+                onEmojiSelect={(emoji: any) => setContent(prev => prev + emoji.native)}
+                theme="light"
+                set="native"
+                previewPosition="none"
+              />
+            </PopoverContent>
+          </Popover>
         </div>
 
         <Button

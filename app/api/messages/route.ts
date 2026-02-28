@@ -141,13 +141,23 @@ export async function POST(req: Request) {
 
     return NextResponse.json({
       message: {
-        ...newMessage,
-        _id: result.insertedId,
+        _id: result.insertedId.toString(),
+        conversationId: conversationId, // keep as the original string that was passed in
         senderId: {
-          _id: user._id,
+          _id: user._id.toString(),
           name: user.name,
-          profileImage: user.profileImage
-        }
+          profileImage: user.profileImage || ''
+        },
+        content,
+        messageType: messageType || 'text',
+        mediaUrl: mediaUrl || null,
+        replyTo: replyTo || null,
+        status: 'sent',
+        reactions: [],
+        isEdited: false,
+        isDeleted: false,
+        createdAt: newMessage.createdAt,
+        updatedAt: newMessage.updatedAt,
       }
     }, { status: 201 });
   } catch (error) {

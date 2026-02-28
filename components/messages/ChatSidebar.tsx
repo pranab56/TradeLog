@@ -2,51 +2,129 @@
 
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger
+} from '@/components/ui/dropdown-menu';
 import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { cn } from '@/lib/utils';
-import { format } from 'date-fns';
-import { MessageSquarePlus, Plus, Search } from 'lucide-react';
+import { useSocket } from '@/providers/socket-provider';
+import dayjs from 'dayjs';
+import relativeTime from 'dayjs/plugin/relativeTime';
+import {
+  MessageSquarePlus, MoreVertical,
+  Pin as PinIcon, Plus, Search, Trash, UserMinus, Volume2,
+  VolumeX
+} from 'lucide-react';
 import { useState } from 'react';
-import SearchUsers from './SearchUsers';
 import GroupModal from './GroupModal';
+import PendingRequests from './PendingRequests';
+import SearchUsers from './SearchUsers';
 
+import axios from 'axios';
+import { toast } from 'sonner';
 
+dayjs.extend(relativeTime);
 
 interface ChatSidebarProps {
   conversations: any[];
+  requests: any[];
   onSelect: (conv: any) => void;
   selectedId?: string;
   loading: boolean;
   currentUser: any;
   onConversationCreated: () => void;
+  isConnected: boolean;
 }
 
 export default function ChatSidebar({
   conversations,
+  requests,
   onSelect,
   selectedId,
   loading,
   currentUser,
-  onConversationCreated
+  onConversationCreated,
+  isConnected
 }: ChatSidebarProps) {
+  const { socket } = useSocket();
+  console.log('[SIDEBAR] Socket Connected State:', isConnected);
   const [showSearch, setShowSearch] = useState(false);
   const [showGroupModal, setShowGroupModal] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
+  const [activeTab, setActiveTab] = useState<'all' | 'blocked'>('all');
 
-  const filteredConversations = conversations.filter(conv => {
-    if (conv.isGroup) {
-      return conv.name?.toLowerCase().includes(searchQuery.toLowerCase());
+  const handleUpdateConversation = async (conversationId: string, data: any) => {
+    try {
+      await axios.patch('/api/conversations', { conversationId, ...data });
+      toast.success('Conversation updated');
+      onConversationCreated();
+    } catch (err) {
+      toast.error('Failed to update conversation');
     }
-    const otherParticipant = conv.participants.find((p: any) => p._id !== currentUser?.id);
-    return otherParticipant?.name?.toLowerCase().includes(searchQuery.toLowerCase());
-  });
+  };
+
+  const handleDeleteConversation = async (conv: any) => {
+    if (!confirm('Are you sure you want to delete this conversation and all its messages?')) return;
+    try {
+      await axios.delete(`/api/conversations?conversationId=${conv._id}`);
+
+      if (socket) {
+        socket.emit('delete-conversation', {
+          conversationId: conv._id,
+          participants: [currentUser.id] // Only notify my own tabs
+        });
+      }
+
+      toast.success('Conversation deleted');
+      onConversationCreated();
+    } catch (err) {
+      toast.error('Failed to delete conversation');
+    }
+  };
+
+  const filteredConversations = conversations
+    .filter(conv => {
+      if (activeTab === 'all') return !conv.isBlocked;
+      return conv.isBlocked;
+    })
+    .filter(conv => {
+      if (conv.isGroup) {
+        return conv.name?.toLowerCase().includes(searchQuery.toLowerCase());
+      }
+      const otherParticipant = conv.participants.find((p: any) => p._id !== currentUser?.id);
+      return otherParticipant?.name?.toLowerCase().includes(searchQuery.toLowerCase());
+    })
+    .sort((a, b) => {
+      if (a.isPinned && !b.isPinned) return -1;
+      if (!a.isPinned && b.isPinned) return 1;
+      return new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime();
+    });
 
   return (
     <div className="w-[350px] flex flex-col border-r bg-card">
       {/* Header */}
       <div className="p-4 border-b flex items-center justify-between">
-        <h1 className="text-xl font-bold">Messages</h1>
+        <div className="flex flex-col">
+          <h1 className="text-xl font-bold">Messages</h1>
+          <div className="flex items-center gap-1.5 mt-0.5">
+            <div
+              className={cn(
+                "w-2 h-2 rounded-full transition-all duration-300",
+                isConnected ? "bg-green-500 shadow-[0_0_8px_rgba(34,197,94,0.4)]" : "bg-red-500 animate-pulse"
+              )}
+            />
+            <span className={cn(
+              "text-[10px] font-bold uppercase tracking-wider",
+              isConnected ? "text-green-500" : "text-red-500"
+            )}>
+              {isConnected ? "Real-time Online" : "Connecting..."}
+            </span>
+          </div>
+        </div>
         <div className="flex gap-1">
           <Button
             variant="ghost"
@@ -68,7 +146,7 @@ export default function ChatSidebar({
       </div>
 
       {/* Search Bar */}
-      <div className="p-4">
+      <div className="p-4 space-y-4">
         <div className="relative">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
           <Input
@@ -78,7 +156,38 @@ export default function ChatSidebar({
             onChange={(e) => setSearchQuery(e.target.value)}
           />
         </div>
+
+        {/* Tab Switcher */}
+        <div className="flex p-1 bg-muted/50 rounded-lg">
+          <button
+            onClick={() => setActiveTab('all')}
+            className={cn(
+              "flex-1 px-3 py-1.5 text-xs font-medium rounded-md transition-all",
+              activeTab === 'all' ? "bg-background shadow-sm text-foreground" : "text-muted-foreground hover:text-foreground"
+            )}
+          >
+            All Chats
+          </button>
+          <button
+            onClick={() => setActiveTab('blocked')}
+            className={cn(
+              "flex-1 px-3 py-1.5 text-xs font-medium rounded-md transition-all",
+              activeTab === 'blocked' ? "bg-background shadow-sm text-foreground" : "text-muted-foreground hover:text-foreground"
+            )}
+          >
+            Blocked
+          </button>
+        </div>
       </div>
+
+      {/* Pending Requests */}
+      {activeTab === 'all' && (
+        <PendingRequests
+          requests={requests}
+          onAction={onConversationCreated}
+          currentUser={currentUser}
+        />
+      )}
 
       {/* Conversation List */}
       <ScrollArea className="flex-1">
@@ -103,48 +212,87 @@ export default function ChatSidebar({
               const image = conv.isGroup ? conv.groupImage : otherParticipant?.profileImage;
 
               return (
-                <button
-                  key={conv._id}
-                  onClick={() => onSelect(conv)}
-                  className={cn(
-                    "w-full flex items-center gap-3 p-3 rounded-xl transition-all hover:bg-muted/50 group text-left",
-                    selectedId === conv._id && "bg-primary/10 hover:bg-primary/20"
-                  )}
-                >
-                  <div className="relative">
-                    <Avatar className="w-12 h-12 border-2 border-background shadow-sm">
-                      <AvatarImage src={image} />
-                      <AvatarFallback className="bg-primary/5 text-primary text-lg">
-                        {title?.charAt(0)}
-                      </AvatarFallback>
-                    </Avatar>
-                    {!conv.isGroup && otherParticipant?.onlineStatus === 'online' && (
-                      <span className="absolute bottom-0 right-0 w-3.5 h-3.5 bg-green-500 border-2 border-background rounded-full" />
+                <div className="relative group w-full">
+                  <button
+                    onClick={() => onSelect(conv)}
+                    className={cn(
+                      "w-full flex items-center gap-3 p-3 rounded-xl transition-all hover:bg-muted/50 text-left",
+                      selectedId === conv._id && "bg-primary/10 hover:bg-primary/20"
                     )}
-                  </div>
-
-                  <div className="flex-1 min-w-0">
-                    <div className="flex justify-between items-start mb-0.5">
-                      <span className="font-semibold truncate pr-2">{title}</span>
-                      {conv.lastMessage && (
-                        <span className="text-[11px] text-muted-foreground whitespace-nowrap">
-                          {format(new Date(conv.updatedAt), 'HH:mm')}
-                        </span>
+                  >
+                    <div className="relative">
+                      <Avatar className="w-12 h-12 border-2 border-background shadow-sm">
+                        <AvatarImage src={image} />
+                        <AvatarFallback className="bg-primary/5 text-primary text-lg">
+                          {title?.charAt(0)}
+                        </AvatarFallback>
+                      </Avatar>
+                      {!conv.isGroup && otherParticipant?.onlineStatus === 'online' && (
+                        <span className="absolute bottom-0 right-0 w-3.5 h-3.5 bg-green-500 border-2 border-background rounded-full" />
                       )}
                     </div>
-                    <div className="flex justify-between items-center">
-                      <p className="text-xs text-muted-foreground truncate flex-1">
-                        {conv.lastMessage ? (
-                          conv.lastMessage.content
-                        ) : (
-                          <span className="italic">No messages yet</span>
+
+                    <div className="flex-1 min-w-0">
+                      <div className="flex justify-between items-start mb-0.5">
+                        <div className="flex items-center gap-1.5 truncate">
+                          <span className="font-semibold truncate">{title}</span>
+                          {conv.isPinned && <PinIcon className="w-3 h-3 text-primary fill-primary" />}
+                          {conv.isMuted && <VolumeX className="w-3 h-3 text-muted-foreground" />}
+                        </div>
+                        {conv.lastMessage && (
+                          <span className="text-[11px] text-muted-foreground whitespace-nowrap">
+                            {dayjs(conv.updatedAt).format('HH:mm')}
+                          </span>
                         )}
-                      </p>
-                      {/* Unread dot example */}
-                      {/* <div className="w-2 h-2 rounded-full bg-primary" /> */}
+                      </div>
+                      <div className="flex justify-between items-center">
+                        <p className="text-xs text-muted-foreground truncate flex-1">
+                          {conv.lastMessage ? (
+                            conv.lastMessage.content
+                          ) : (
+                            <span className="italic">No messages yet</span>
+                          )}
+                        </p>
+                      </div>
                     </div>
+                  </button>
+
+                  <div className="absolute right-2 top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 transition-opacity">
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button variant="ghost" size="icon" className="h-8 w-8 rounded-full">
+                          <MoreVertical className="w-4 h-4" />
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end" className="w-40">
+                        <DropdownMenuItem
+                          className="gap-2 cursor-pointer"
+                          onClick={() => handleUpdateConversation(conv._id, { isPinned: !conv.isPinned })}
+                        >
+                          <PinIcon className="w-4 h-4" /> {conv.isPinned ? 'Unpin' : 'Pin'} Chat
+                        </DropdownMenuItem>
+                        <DropdownMenuItem
+                          className="gap-2 cursor-pointer"
+                          onClick={() => handleUpdateConversation(conv._id, { isMuted: !conv.isMuted })}
+                        >
+                          <Volume2 className="w-4 h-4" /> {conv.isMuted ? 'Unmute' : 'Mute'}
+                        </DropdownMenuItem>
+                        <DropdownMenuItem
+                          className="gap-2 cursor-pointer text-destructive focus:text-destructive"
+                          onClick={() => handleUpdateConversation(conv._id, { isBlocked: !conv.isBlocked })}
+                        >
+                          <UserMinus className="w-4 h-4" /> {conv.isBlocked ? 'Unblock' : 'Block'}
+                        </DropdownMenuItem>
+                        <DropdownMenuItem
+                          className="gap-2 cursor-pointer text-destructive focus:text-destructive"
+                          onClick={() => handleDeleteConversation(conv)}
+                        >
+                          <Trash className="w-4 h-4" /> Delete
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
                   </div>
-                </button>
+                </div>
               );
             })
           ) : (

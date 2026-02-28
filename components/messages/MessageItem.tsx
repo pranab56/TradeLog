@@ -1,6 +1,15 @@
 'use client';
 
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { Button } from '@/components/ui/button';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle
+} from '@/components/ui/dialog';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -8,17 +17,20 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { cn } from '@/lib/utils';
-import { format } from 'date-fns';
+import dayjs from 'dayjs';
 import {
   Check,
   CheckCheck,
   Edit2,
+  FileText,
   MoreHorizontal,
   Pin,
+  Play,
   Reply,
   Smile,
   Trash2
 } from 'lucide-react';
+import { useState } from 'react';
 
 
 interface MessageItemProps {
@@ -42,6 +54,8 @@ export default function MessageItem({
 }: MessageItemProps) {
   const isText = message.messageType === 'text';
   const isImage = message.messageType === 'image';
+  const isDocument = message.messageType === 'document';
+  const isAudio = message.messageType === 'audio';
 
   return (
     <div className={cn(
@@ -68,6 +82,11 @@ export default function MessageItem({
           </span>
         )}
 
+        {message.isPinned && (
+          <div className="flex items-center gap-1 text-[10px] text-primary/80 mb-1 ml-1 font-bold italic uppercase tracking-tighter">
+            <Pin className="w-3 h-3 fill-current" /> Pinned
+          </div>
+        )}
         <div className="flex items-center gap-2 w-full">
           {isOwn && (
             <div className="opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0">
@@ -108,8 +127,37 @@ export default function MessageItem({
               <img
                 src={message.mediaUrl}
                 alt="Image"
-                className="rounded-xl max-w-full h-auto object-cover max-h-80"
+                className="rounded-xl max-w-full h-auto object-cover max-h-80 transition-transform hover:scale-[1.02] cursor-pointer"
               />
+            )}
+
+            {isDocument && (
+              <div className="flex items-center gap-3 p-2 bg-black/10 rounded-xl min-w-[200px]">
+                <div className="p-2 bg-primary/20 rounded-lg">
+                  <FileText className="w-6 h-6" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-semibold truncate">{message.content || 'Document.pdf'}</p>
+                  <p className="text-[10px] opacity-70">1.2 MB</p>
+                </div>
+              </div>
+            )}
+
+            {isAudio && (
+              <div className="flex items-center gap-3 p-2 min-w-[200px]">
+                <Button size="icon" variant="ghost" className="rounded-full bg-primary-foreground/20 h-8 w-8">
+                  <Play className="w-4 h-4 fill-current" />
+                </Button>
+                <div className="flex-1 space-y-1">
+                  <div className="h-1 bg-primary-foreground/30 rounded-full w-full relative">
+                    <div className="absolute left-0 top-0 h-full bg-primary-foreground w-1/3 rounded-full" />
+                  </div>
+                  <div className="flex justify-between text-[10px]">
+                    <span>0:12</span>
+                    <span>0:45</span>
+                  </div>
+                </div>
+              </div>
             )}
 
             <div className={cn(
@@ -118,7 +166,7 @@ export default function MessageItem({
             )}>
               {message.isEdited && !message.isDeleted && <span className="text-[9px] uppercase font-bold tracking-wider">Edited</span>}
               <span className="text-[10px]">
-                {format(new Date(message.createdAt), 'HH:mm')}
+                {dayjs(message.createdAt).format('HH:mm')}
               </span>
               {isOwn && (
                 message.status === 'read'
@@ -172,6 +220,7 @@ function MessageActions({
   onDelete?: () => void;
   onReact?: (emoji: string) => void;
 }) {
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
   const emojis = ['👍', '❤️', '😂', '😮', '😢', '🔥'];
 
   return (
@@ -213,13 +262,51 @@ function MessageActions({
               <DropdownMenuItem className="gap-2 cursor-pointer text-blue-500 focus:text-blue-500" onClick={onEdit}>
                 <Edit2 className="w-4 h-4" /> Edit
               </DropdownMenuItem>
-              <DropdownMenuItem className="gap-2 cursor-pointer text-destructive focus:text-destructive" onClick={onDelete}>
+              <DropdownMenuItem
+                className="gap-2 cursor-pointer text-destructive focus:text-destructive"
+                onClick={() => setShowDeleteModal(true)}
+              >
                 <Trash2 className="w-4 h-4" /> Delete
               </DropdownMenuItem>
             </>
           )}
         </DropdownMenuContent>
       </DropdownMenu>
+
+      <Dialog open={showDeleteModal} onOpenChange={setShowDeleteModal}>
+        <DialogContent className="max-w-sm rounded-2xl">
+          <DialogHeader>
+            <DialogTitle>Delete Message?</DialogTitle>
+            <DialogDescription>
+              This action cannot be undone. Are you sure?
+            </DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-2 py-4">
+            <Button
+              variant="destructive"
+              className="w-full rounded-xl py-6"
+              onClick={() => {
+                onDelete?.(); // Logic for everyone would go here
+                setShowDeleteModal(false);
+              }}
+            >
+              Delete for everyone
+            </Button>
+            <Button
+              variant="outline"
+              className="w-full rounded-xl py-6"
+              onClick={() => setShowDeleteModal(false)}
+            >
+              Delete for me only
+            </Button>
+          </div>
+          <DialogFooter>
+            <Button variant="ghost" className="w-full rounded-xl" onClick={() => setShowDeleteModal(false)}>
+              Cancel
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

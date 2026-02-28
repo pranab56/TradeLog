@@ -10,6 +10,7 @@ import {
   DialogTitle
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
+import { useSocket } from '@/providers/socket-provider';
 import axios from 'axios';
 import { Check, Loader2, Users, X } from 'lucide-react';
 import { useState } from 'react';
@@ -22,6 +23,7 @@ interface GroupModalProps {
 }
 
 export default function GroupModal({ isOpen, onClose, onCreated, currentUser }: GroupModalProps) {
+  const { socket } = useSocket();
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
   const [selectedUsers, setSelectedUsers] = useState<any[]>([]);
@@ -52,16 +54,24 @@ export default function GroupModal({ isOpen, onClose, onCreated, currentUser }: 
   };
 
   const handleCreateGroup = async () => {
-    if (!name || selectedUsers.length < 2) return;
+    if (!name || selectedUsers.length < 1) return;
 
     try {
       setLoading(true);
-      await axios.post('/api/conversations', {
+      const res = await axios.post('/api/conversations', {
         name,
         description,
         participants: selectedUsers.map(u => u._id),
         isGroup: true
       });
+
+      if (socket) {
+        socket.emit('new-conversation', {
+          conversation: res.data.conversation,
+          participants: [...selectedUsers.map(u => u._id), currentUser.id]
+        });
+      }
+
       onCreated();
       resetForm();
     } catch (err) {
@@ -173,7 +183,7 @@ export default function GroupModal({ isOpen, onClose, onCreated, currentUser }: 
           <Button variant="ghost" onClick={onClose} disabled={loading}>Cancel</Button>
           <Button
             onClick={handleCreateGroup}
-            disabled={loading || !name || selectedUsers.length < 2}
+            disabled={loading || !name || selectedUsers.length < 1}
             className="rounded-xl px-8 shadow-lg shadow-primary/20"
           >
             {loading ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Users className="w-4 h-4 mr-2" />}

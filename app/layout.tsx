@@ -4,6 +4,7 @@ import { ThemeProvider } from "@/providers/ThemeProvider";
 import { SocketProvider } from "@/providers/socket-provider";
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
+import { Toaster } from "sonner";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -34,7 +35,10 @@ export default function RootLayout({
         <ThemeProvider>
           <TooltipProvider>
             <SocketProvider>
-              <StoreProvider>{children}</StoreProvider>
+              <StoreProvider>
+                {children}
+                <Toaster richColors position="top-right" />
+              </StoreProvider>
             </SocketProvider>
           </TooltipProvider>
         </ThemeProvider>

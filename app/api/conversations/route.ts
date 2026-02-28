@@ -19,8 +19,15 @@ export async function GET() {
 
     if (!user) return NextResponse.json({ error: 'User not found' }, { status: 404 });
 
+    console.log('Fetching conversations for user ID:', user._id);
+
     const conversations = await db.collection('conversations').aggregate([
-      { $match: { participants: user._id } },
+      {
+        $match: {
+          participants: { $in: [user._id, user._id.toString()] },
+          deletedBy: { $nin: [user._id, user._id.toString()] }
+        }
+      },
       {
         $lookup: {
           from: 'users',
@@ -41,9 +48,18 @@ export async function GET() {
       { $sort: { updatedAt: -1 } }
     ]).toArray();
 
-    // Map participantDetails to match expected format
+    console.log(`Found ${conversations.length} conversations for user ${user.email}`);
+    if (conversations.length > 0) {
+      console.log('Sample conversation participants:', conversations[0].participants);
+    }
+
+    // Map participantDetails and add user-specific flags
     const formattedConversations = conversations.map(c => ({
       ...c,
+      _id: c._id.toString(), // Always a plain string so socket room IDs match
+      isPinned: c.pinnedBy?.some((id: ObjectId) => id.toString() === user._id.toString()) || false,
+      isMuted: c.mutedBy?.some((id: ObjectId) => id.toString() === user._id.toString()) || false,
+      isBlocked: c.blockedBy?.some((id: ObjectId) => id.toString() === user._id.toString()) || false,
       participants: c.participantDetails.map((p: any) => ({
         _id: p._id.toString(),
         name: p.name,
@@ -91,6 +107,10 @@ export async function POST(req: Request) {
       name,
       description,
       admins: isGroup ? [user._id] : [],
+      pinnedBy: [],
+      mutedBy: [],
+      blockedBy: [],
+      deletedBy: [],
       createdAt: new Date(),
       updatedAt: new Date()
     };
@@ -100,5 +120,87 @@ export async function POST(req: Request) {
   } catch (error) {
     console.error('Create conversation error:', error);
     return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });
+  }
+}
+
+export async function PATCH(req: Request) {
+  try {
+    const cookieStore = await cookies();
+    const token = cookieStore.get('token')?.value;
+
+    if (!token) return NextResponse.json({ error: 'Not authenticated' }, { status: 401 });
+
+    const decoded: any = verifyToken(token);
+    if (!decoded) return NextResponse.json({ error: 'Invalid token' }, { status: 401 });
+
+    const { conversationId, isPinned, isMuted, isBlocked } = await req.json();
+    const db = await getDb('tradelog_main');
+    const user = await db.collection('users').findOne({ email: decoded.email });
+
+    if (!user) return NextResponse.json({ error: 'User not found' }, { status: 404 });
+
+    const updateQuery: any = { $set: { updatedAt: new Date() } };
+
+    if (typeof isPinned !== 'undefined') {
+      updateQuery[isPinned ? '$addToSet' : '$pull'] = { pinnedBy: user._id };
+    }
+    if (typeof isMuted !== 'undefined') {
+      updateQuery[isMuted ? '$addToSet' : '$pull'] = { mutedBy: user._id };
+    }
+    if (typeof isBlocked !== 'undefined') {
+      updateQuery[isBlocked ? '$addToSet' : '$pull'] = { blockedBy: user._id };
+    }
+
+    // Since MongoDB doesn't allow multiple top-level operators easily in one update if they target same fields,
+    // we handle $set separate from $addToSet/$pull if needed, but here they target different fields.
+    // However, $addToSet and $pull can't be in the same object if we have multiple updates. 
+    // Let's do it sequentially or construct a proper multi-operator query.
+
+    const finalUpdate: any = { $set: { updatedAt: new Date() } };
+    if (updateQuery.$addToSet) finalUpdate.$addToSet = updateQuery.$addToSet;
+    if (updateQuery.$pull) finalUpdate.$pull = updateQuery.$pull;
+
+    await db.collection('conversations').updateOne(
+      { _id: new ObjectId(conversationId) },
+      finalUpdate
+    );
+
+    return NextResponse.json({ message: 'Conversation updated' });
+  } catch (error) {
+    console.error('Update conversation error:', error);
+    return NextResponse.json({ error: 'Error updating conversation' }, { status: 500 });
+  }
+}
+
+export async function DELETE(req: Request) {
+  try {
+    const cookieStore = await cookies();
+    const token = cookieStore.get('token')?.value;
+
+    if (!token) return NextResponse.json({ error: 'Not authenticated' }, { status: 401 });
+
+    const decoded: any = verifyToken(token);
+    if (!decoded) return NextResponse.json({ error: 'Invalid token' }, { status: 401 });
+
+    const { searchParams } = new URL(req.url);
+    const conversationId = searchParams.get('conversationId');
+
+    if (!conversationId) return NextResponse.json({ error: 'Conversation ID required' }, { status: 400 });
+
+    const db = await getDb('tradelog_main');
+    const user = await db.collection('users').findOne({ email: decoded.email });
+
+    if (!user) return NextResponse.json({ error: 'User not found' }, { status: 404 });
+
+    // "Delete" for this user only by adding them to deletedBy array
+    await db.collection('conversations').updateOne(
+      { _id: new ObjectId(conversationId) },
+      { $addToSet: { deletedBy: user._id }, $set: { updatedAt: new Date() } }
+    );
+
+    return NextResponse.json({ message: 'Conversation deleted for you' });
+  } catch (error) {
+    console.error('Delete conversation error:', error);
+    return NextResponse.json({ error: 'Error deleting conversation' }, { status: 500 });
   }
 }
