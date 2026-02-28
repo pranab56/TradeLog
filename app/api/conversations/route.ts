@@ -197,6 +197,7 @@ export async function DELETE(req: Request) {
 
     const { searchParams } = new URL(req.url);
     const conversationId = searchParams.get('conversationId');
+    const type = searchParams.get('type') || 'me';
 
     if (!conversationId) return NextResponse.json({ error: 'Conversation ID required' }, { status: 400 });
 
@@ -205,13 +206,19 @@ export async function DELETE(req: Request) {
 
     if (!user) return NextResponse.json({ error: 'User not found' }, { status: 404 });
 
-    // "Delete" for this user only by adding them to deletedBy array
-    await db.collection('conversations').updateOne(
-      { _id: new ObjectId(conversationId) },
-      { $addToSet: { deletedBy: user._id }, $set: { updatedAt: new Date() } }
-    );
-
-    return NextResponse.json({ message: 'Conversation deleted for you' });
+    if (type === 'all') {
+      // Delete conversation entirely for everyone
+      await db.collection('conversations').deleteOne({ _id: new ObjectId(conversationId) });
+      await db.collection('messages').deleteMany({ conversationId: new ObjectId(conversationId) });
+      return NextResponse.json({ message: 'Conversation deleted for everyone' });
+    } else {
+      // "Delete" for this user only by adding them to deletedBy array
+      await db.collection('conversations').updateOne(
+        { _id: new ObjectId(conversationId) },
+        { $addToSet: { deletedBy: user._id }, $set: { updatedAt: new Date() } }
+      );
+      return NextResponse.json({ message: 'Conversation deleted for you' });
+    }
   } catch (error) {
     console.error('Delete conversation error:', error);
     return NextResponse.json({ error: 'Error deleting conversation' }, { status: 500 });

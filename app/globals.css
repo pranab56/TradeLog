@@ -134,3 +134,19 @@
 .loss-text {
   color: var(--loss);
 }
+
+/* Global Scrollbar Hiding (But keep scrolling functional) */
+* {
+  scrollbar-width: none; /* Firefox */
+  -ms-overflow-style: none; /* IE and Edge */
+}
+
+::-webkit-scrollbar {
+  width: 0px;
+  height: 0px;
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: transparent;
+}

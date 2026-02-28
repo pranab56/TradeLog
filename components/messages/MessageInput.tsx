@@ -9,12 +9,10 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { useSocket } from '@/providers/socket-provider';
-import data from '@emoji-mart/data';
-import Picker from '@emoji-mart/react';
+import EmojiPicker from 'emoji-picker-react';
 import {
   Image as ImageIcon,
   Loader2,
-  Mic,
   Paperclip,
   Send,
   Smile,
@@ -212,31 +210,27 @@ export default function MessageInput({
                 <Smile className="w-5 h-5" />
               </Button>
             </PopoverTrigger>
-            <PopoverContent side="top" align="end" sideOffset={10} className="p-0 border-none shadow-2xl rounded-2xl overflow-hidden">
-              <Picker
-                data={data}
-                onEmojiSelect={(emoji: any) => setContent(prev => prev + emoji.native)}
-                theme="light"
-                set="native"
-                previewPosition="none"
+            <PopoverContent side="top" align="end" sideOffset={10} className="p-0 border-none shadow-2xl rounded-2xl overflow-hidden w-full sm:w-auto">
+              <EmojiPicker
+                onEmojiClick={(emojiData: any) => setContent(prev => prev + emojiData.emoji)}
+                theme={'light' as any}
               />
             </PopoverContent>
           </Popover>
 
-          {content.trim() || isUploading || selectedImage ? (
-            <Button
-              onClick={handleSend}
-              disabled={isUploading}
-              size="icon"
-              className="rounded-full w-10 h-10 flex-shrink-0 transition-transform hover:scale-105 bg-primary text-primary-foreground"
-            >
-              {isUploading ? <Loader2 className="w-5 h-5 animate-spin" /> : <Send className="w-4 h-4 ml-0.5" />}
-            </Button>
-          ) : (
-            <Button variant="ghost" size="icon" className="text-muted-foreground hover:text-primary rounded-full transition-colors">
-              <Mic className="w-5 h-5" />
-            </Button>
-          )}
+          <Button
+            onClick={handleSend}
+            disabled={isUploading || (!content.trim() && !selectedImage)}
+            size="icon"
+            className={cn(
+              "rounded-full w-10 h-10 flex-shrink-0 transition-transform",
+              (content.trim() || selectedImage)
+                ? "bg-primary text-primary-foreground hover:scale-105"
+                : "bg-muted text-muted-foreground hover:bg-muted cursor-not-allowed"
+            )}
+          >
+            {isUploading ? <Loader2 className="w-5 h-5 animate-spin" /> : <Send className="w-4 h-4 ml-0.5" />}
+          </Button>
         </div>
       </div>
     </div>

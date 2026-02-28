@@ -16,8 +16,10 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { cn } from '@/lib/utils';
 import dayjs from 'dayjs';
+import EmojiPicker from 'emoji-picker-react';
 import {
   Check,
   CheckCheck,
@@ -26,6 +28,7 @@ import {
   MoreHorizontal,
   Pin,
   Play,
+  Plus,
   Reply,
   Smile,
   Trash2
@@ -200,7 +203,11 @@ export default function MessageItem({
                 isOwn ? "right-0" : "left-0"
               )}>
                 {message.reactions.map((r: any, idx: number) => (
-                  <div key={idx} className="bg-background border rounded-full px-1.5 py-0.5 text-[10px] shadow-sm flex items-center gap-1 hover:scale-110 transition-transform cursor-pointer">
+                  <div
+                    key={idx}
+                    className="bg-background border rounded-full px-1.5 py-0.5 text-[10px] shadow-sm flex items-center gap-1 hover:scale-110 transition-transform cursor-pointer"
+                    title={r.userName || r.userId}
+                  >
                     <span>{r.emoji}</span>
                   </div>
                 ))}
@@ -239,28 +246,62 @@ function MessageActions({
   onReact?: (emoji: string) => void;
 }) {
   const [showDeleteModal, setShowDeleteModal] = useState(false);
-  const emojis = ['👍', '❤️', '😂', '😮', '😢', '🔥'];
+  const [showPicker, setShowPicker] = useState(false);
+  const emojis = ['👍', '❤️', '😂', '😮', '😢'];
 
   return (
     <div className="flex items-center gap-1">
-      <DropdownMenu>
-        <DropdownMenuTrigger asChild>
+      <Popover onOpenChange={(open) => {
+        if (!open) setTimeout(() => setShowPicker(false), 200);
+      }}>
+        <PopoverTrigger asChild>
           <button className="p-1.5 rounded-full hover:bg-muted text-muted-foreground transition-colors group-hover:text-primary">
             <Smile className="w-4 h-4" />
           </button>
-        </DropdownMenuTrigger>
-        <DropdownMenuContent align={isOwn ? 'end' : 'start'} className="flex p-1 gap-1 min-w-0 bg-background/95 backdrop-blur-sm">
-          {emojis.map(emoji => (
-            <button
-              key={emoji}
-              onClick={() => onReact?.(emoji)}
-              className="hover:scale-125 transition-transform p-1.5 text-lg leading-none"
-            >
-              {emoji}
-            </button>
-          ))}
-        </DropdownMenuContent>
-      </DropdownMenu>
+        </PopoverTrigger>
+        <PopoverContent
+          align={isOwn ? 'end' : 'start'}
+          className={cn(
+            "bg-background/95 backdrop-blur-sm border shadow-lg",
+            !showPicker ? "w-auto p-1 rounded-full flex items-center gap-1" : "p-0 rounded-2xl w-[300px]"
+          )}
+        >
+          {!showPicker ? (
+            <>
+              {emojis.map(emoji => (
+                <button
+                  key={emoji}
+                  onClick={() => onReact?.(emoji)}
+                  className="hover:scale-125 transition-transform p-1.5 text-lg leading-none"
+                >
+                  {emoji}
+                </button>
+              ))}
+              <div className="w-px h-6 bg-border mx-1" />
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setShowPicker(true);
+                }}
+                className="hover:bg-muted rounded-full p-1.5 text-muted-foreground transition-colors"
+                title="More emojis"
+              >
+                <Plus className="w-5 h-5" />
+              </button>
+            </>
+          ) : (
+            <EmojiPicker
+              onEmojiClick={(emojiData: any) => {
+                onReact?.(emojiData.emoji);
+              }}
+              theme={'light' as any}
+              width={300}
+              height={350}
+              previewConfig={{ showPreview: false }}
+            />
+          )}
+        </PopoverContent>
+      </Popover>
 
       <DropdownMenu>
         <DropdownMenuTrigger asChild>

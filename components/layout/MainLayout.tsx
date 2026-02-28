@@ -22,7 +22,7 @@ export default function MainLayout({ children }: { children: React.ReactNode }) 
 
       <div className="flex-1 flex flex-col min-w-0 h-screen overflow-hidden">
         <Header onOpenSidebar={() => setSidebarOpen(true)} />
-        <main className="flex-1 p-4 md:p-6 lg:p-8 overflow-y-auto custom-scrollbar">
+        <main className="flex-1 p-4 overflow-y-auto custom-scrollbar">
           <div className="max-w-[1600px] mx-auto w-full">
             {children}
           </div>

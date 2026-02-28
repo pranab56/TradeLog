@@ -105,7 +105,10 @@ export default function ChatSidebar({
     });
 
   return (
-    <div className="w-[350px] flex flex-col border-r bg-card">
+    <div className={cn(
+      "flex flex-col border-r bg-card h-full transition-all duration-300 flex-shrink-0",
+      selectedId ? "hidden md:flex md:w-[350px]" : "w-full md:w-[350px]"
+    )}>
       {/* Header */}
       <div className="p-4 border-b flex items-center justify-between">
         <div className="flex flex-col">

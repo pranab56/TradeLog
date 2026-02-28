@@ -2,16 +2,30 @@
 
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle
+} from '@/components/ui/dialog';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import { useSocket } from '@/providers/socket-provider';
 import axios from 'axios';
 import { motion } from 'framer-motion';
 import {
-  Info,
+  ArrowLeft,
   Loader2,
   MoreVertical,
-  Phone,
-  Video
+  Trash2
 } from 'lucide-react';
+import { useRouter } from 'next/navigation';
 import { useEffect, useRef, useState } from 'react';
 import InfiniteScroll from 'react-infinite-scroll-component';
 import { toast } from 'sonner';
@@ -25,6 +39,7 @@ interface ChatWindowProps {
   conversation: any;
   currentUser: any;
   onMessageSent?: (msg: any) => void;
+  onBack?: () => void;
 }
 
 // Normalize any ID (string, ObjectId, {$oid:...}) to a plain string
@@ -36,7 +51,7 @@ const toStr = (id: any): string => {
   return String(id);
 };
 
-export default function ChatWindow({ conversation, currentUser, onMessageSent }: ChatWindowProps) {
+export default function ChatWindow({ conversation, currentUser, onMessageSent, onBack }: ChatWindowProps) {
   const { socket, isConnected } = useSocket();
   const convId = toStr(conversation._id);
   const [messages, setMessages] = useState<any[]>([]);
@@ -45,7 +60,9 @@ export default function ChatWindow({ conversation, currentUser, onMessageSent }:
   const [replyingTo, setReplyingTo] = useState<any>(null);
   const [editingMessage, setEditingMessage] = useState<any>(null);
   const [isCalling, setIsCalling] = useState(false);
+  const [showDeleteChatModal, setShowDeleteChatModal] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
+  const router = useRouter();
 
   const otherParticipant = !conversation.isGroup
     ? conversation.participants.find((p: any) => p._id !== currentUser?.id)
@@ -219,9 +236,17 @@ export default function ChatWindow({ conversation, currentUser, onMessageSent }:
   const handleReact = async (messageId: string, emoji: string) => {
     try {
       const res = await axios.patch('/api/messages', { messageId, type: 'react', emoji });
-      const updatedMessage = res.data.message;
-      setMessages(prev => prev.map(m => m._id === updatedMessage._id ? updatedMessage : m));
-      if (socket) socket.emit('react-message', updatedMessage);
+      const updatedReactions = res.data.message.reactions;
+
+      const newMessages = messages.map(m => {
+        if (m._id === messageId) {
+          const updated = { ...m, reactions: updatedReactions };
+          if (socket) socket.emit('react-message', updated);
+          return updated;
+        }
+        return m;
+      });
+      setMessages(newMessages);
     } catch (err) {
       console.error('React error', err);
     }
@@ -238,12 +263,43 @@ export default function ChatWindow({ conversation, currentUser, onMessageSent }:
     }
   };
 
+  const handleDeleteChat = async (type: 'all' | 'me') => {
+    try {
+      await axios.delete(`/api/conversations?conversationId=${conversation._id}&type=${type}`);
+      setShowDeleteChatModal(false);
+
+      if (type === 'all' && socket) {
+        socket.emit('delete-conversation', {
+          conversationId: conversation._id,
+          participants: conversation.participants.map((p: any) => p._id)
+        });
+      }
+
+      toast.success(type === 'all' ? 'Chat deleted for everyone' : 'Chat deleted for you');
+      router.push('/messages'); // redirect back to message list
+      router.refresh();
+    } catch (err) {
+      console.error('Delete chat error', err);
+      toast.error('Failed to delete chat');
+    }
+  };
+
   return (
-    <div className="flex-1 flex flex-col bg-card/30">
+    <div className="flex-1 flex flex-col bg-card/30 min-w-0 max-w-full">
       {/* Header */}
-      <div className="p-4 border-b flex items-center justify-between bg-card/80 backdrop-blur-md sticky top-0 z-10">
-        <div className="flex items-center gap-3">
-          <Avatar className="w-10 h-10 ring-2 ring-primary/10">
+      <div className="p-4 border-b flex items-center justify-between bg-card/80 backdrop-blur-md sticky top-0 z-10 w-full">
+        <div className="flex items-center gap-3 truncate">
+          {onBack && (
+            <Button
+              variant="ghost"
+              size="icon"
+              className="md:hidden flex-shrink-0 text-muted-foreground mr-1"
+              onClick={onBack}
+            >
+              <ArrowLeft className="w-5 h-5" />
+            </Button>
+          )}
+          <Avatar className="w-10 h-10 ring-2 ring-primary/10 flex-shrink-0">
             <AvatarImage src={image} />
             <AvatarFallback className="bg-primary/5 text-primary">
               {title?.charAt(0)}
@@ -264,34 +320,21 @@ export default function ChatWindow({ conversation, currentUser, onMessageSent }:
           </div>
         </div>
         <div className="flex items-center gap-1">
-          <Button
-            variant="ghost"
-            size="icon"
-            className="text-muted-foreground transition-colors hover:text-primary"
-            onClick={() => {
-              if (conversation.isBlocked) return toast.error('Calling is restricted because this chat is blocked.');
-              setIsCalling(true);
-            }}
-          >
-            <Phone className="w-5 h-5" />
-          </Button>
-          <Button
-            variant="ghost"
-            size="icon"
-            className="text-muted-foreground transition-colors hover:text-primary"
-            onClick={() => {
-              if (conversation.isBlocked) return toast.error('Calling is restricted because this chat is blocked.');
-              toast.info('Video calling coming soon!');
-            }}
-          >
-            <Video className="w-5 h-5" />
-          </Button>
-          <Button variant="ghost" size="icon" className="text-muted-foreground transition-colors hover:text-primary">
-            <Info className="w-5 h-5" />
-          </Button>
-          <Button variant="ghost" size="icon" className="text-muted-foreground transition-colors hover:text-primary">
-            <MoreVertical className="w-5 h-5" />
-          </Button>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="ghost" size="icon" className="text-muted-foreground transition-colors hover:text-primary">
+                <MoreVertical className="w-5 h-5" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem
+                className="text-destructive focus:text-destructive gap-2 cursor-pointer"
+                onClick={() => setShowDeleteChatModal(true)}
+              >
+                <Trash2 className="w-4 h-4" /> Delete Chat
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
       </div>
 
@@ -334,8 +377,8 @@ export default function ChatWindow({ conversation, currentUser, onMessageSent }:
               >
                 <MessageItem
                   message={msg}
-                  isOwn={msg.senderId._id === currentUser?.id}
-                  showAvatar={index === 0 || reversedArr[index - 1]?.senderId._id !== msg.senderId._id}
+                  isOwn={toStr(msg.senderId._id) === currentUser?.id || toStr(msg.senderId) === currentUser?.id}
+                  showAvatar={index === 0 || toStr(reversedArr[index - 1]?.senderId._id) !== toStr(msg.senderId._id)}
                   onReply={() => setReplyingTo(msg)}
                   onReact={(emoji) => handleReact(msg._id, emoji)}
                   onEdit={() => setEditingMessage(msg)}
@@ -386,6 +429,38 @@ export default function ChatWindow({ conversation, currentUser, onMessageSent }:
         onHangup={() => setIsCalling(false)}
         user={otherParticipant}
       />
+
+      <Dialog open={showDeleteChatModal} onOpenChange={setShowDeleteChatModal}>
+        <DialogContent className="max-w-sm rounded-2xl">
+          <DialogHeader>
+            <DialogTitle>Delete Chat?</DialogTitle>
+            <DialogDescription>
+              This action cannot be undone. Do you want to delete this chat for everyone or just yourself?
+            </DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-2 py-4">
+            <Button
+              variant="destructive"
+              className="w-full rounded-xl py-6"
+              onClick={() => handleDeleteChat('all')}
+            >
+              Delete for everyone
+            </Button>
+            <Button
+              variant="outline"
+              className="w-full rounded-xl py-6"
+              onClick={() => handleDeleteChat('me')}
+            >
+              Delete for me only
+            </Button>
+          </div>
+          <DialogFooter>
+            <Button variant="ghost" className="w-full rounded-xl" onClick={() => setShowDeleteChatModal(false)}>
+              Cancel
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
