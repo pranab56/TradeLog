@@ -1,3 +1,7 @@
+const { loadEnvConfig } = require('@next/env');
+const projectDir = process.cwd();
+loadEnvConfig(projectDir);
+
 const { createServer } = require('http');
 const { parse } = require('url');
 const next = require('next');
@@ -26,7 +30,7 @@ const getId = (id) => {
 const { MongoClient, ObjectId } = require('mongodb');
 
 // Connect standalone mongo client for user presence tracking
-const mongoClient = new MongoClient(process.env.MONGODB_URI || 'mongodb+srv://pronab:nCGvGtr06Yvr719h@cluster0.ihezzbq.mongodb.net/');
+const mongoClient = new MongoClient(process.env.MONGODB_URI);
 mongoClient.connect().then(() => console.log('[SOCKET] MongoDB connected for presence tracking')).catch(console.error);
 
 app.prepare().then(() => {
