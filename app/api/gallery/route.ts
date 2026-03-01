@@ -1,10 +1,15 @@
 import { TokenPayload, verifyToken } from '@/lib/auth-utils';
 import { getUserDb } from '@/lib/mongodb-client';
-import fs from 'fs';
-import { mkdir } from 'fs/promises';
+import { v2 as cloudinary } from 'cloudinary';
 import { cookies } from 'next/headers';
 import { NextRequest, NextResponse } from 'next/server';
-import path from 'path';
+
+// Configure Cloudinary
+cloudinary.config({
+  cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
+  api_key: process.env.CLOUDINARY_API_KEY,
+  api_secret: process.env.CLOUDINARY_API_SECRET,
+});
 
 export const config = {
   api: {
@@ -58,29 +63,26 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'No file uploaded' }, { status: 400 });
     }
 
-    // Create unique filename
-    const extension = path.extname(file.name);
-    const fileName = `${crypto.randomUUID()}${extension}`;
-    const uploadDir = path.join(process.cwd(), 'public', 'gallery');
-
-    await mkdir(uploadDir, { recursive: true });
-
-    const filePath = path.join(uploadDir, fileName);
-
-    // Convert File to Buffer/Stream and save
+    // Convert file to base64
     const bytes = await file.arrayBuffer();
     const buffer = Buffer.from(bytes);
+    const base64 = `data:${file.type};base64,${buffer.toString('base64')}`;
 
-    await fs.promises.writeFile(filePath, buffer);
-
-    const fileUrl = `/gallery/${fileName}`;
     const mimeType = file.type;
-    const type = mimeType.startsWith('video/') ? 'video' : 'image';
+    const isVideo = mimeType.startsWith('video/');
+
+    // Upload to Cloudinary (auto detects image/video based on base64 data)
+    const uploadResult = await cloudinary.uploader.upload(base64, {
+      folder: 'tradelog_gallery',
+      resource_type: isVideo ? 'video' : 'image',
+    });
+
+    const fileUrl = uploadResult.secure_url;
 
     const db = await getUserDb(decoded.dbName);
     const galleryItem = {
       url: fileUrl,
-      type: type,
+      type: isVideo ? 'video' : 'image',
       fileName: file.name,
       mimeType: mimeType,
       size: file.size,

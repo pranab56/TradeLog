@@ -1,10 +1,16 @@
 import { TokenPayload, verifyToken } from '@/lib/auth-utils';
 import { getUserDb } from '@/lib/mongodb-client';
-import { unlink } from 'fs/promises';
+import { v2 as cloudinary } from 'cloudinary';
 import { ObjectId } from 'mongodb';
 import { cookies } from 'next/headers';
 import { NextResponse } from 'next/server';
-import path from 'path';
+
+// Configure Cloudinary
+cloudinary.config({
+  cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
+  api_key: process.env.CLOUDINARY_API_KEY,
+  api_secret: process.env.CLOUDINARY_API_SECRET,
+});
 
 export async function DELETE(
   request: Request,
@@ -33,12 +39,21 @@ export async function DELETE(
       return NextResponse.json({ error: 'Item not found' }, { status: 404 });
     }
 
-    // Delete the file from filesystem
-    try {
-      const filePath = path.join(process.cwd(), 'public', item.url);
-      await unlink(filePath);
-    } catch (e) {
-      console.warn('File already deleted or not found on disk:', e);
+    // Delete from Cloudinary if it's a Cloudinary URL
+    if (item.url && item.url.includes('cloudinary.com')) {
+      try {
+        // Extract public ID from Cloudinary URL
+        // URL format: https://res.cloudinary.com/cloud_name/image/upload/v1234567890/folder/filename.ext
+        const urlParts = item.url.split('/');
+        const filenameWithExt = urlParts[urlParts.length - 1]; // filename.ext
+        const folder = urlParts[urlParts.length - 2]; // folder (e.g. tradelog_gallery)
+        const filename = filenameWithExt.split('.')[0]; // filename
+        const publicId = `${folder}/${filename}`;
+
+        await cloudinary.uploader.destroy(publicId);
+      } catch (e) {
+        console.warn('Failed to delete file from Cloudinary:', e);
+      }
     }
 
     // Delete from DB
