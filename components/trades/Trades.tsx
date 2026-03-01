@@ -57,6 +57,13 @@ import { useEffect, useMemo, useState } from 'react';
 
 const ITEMS_PER_PAGE = 10;
 
+const getLocalDate = (isoDateString: string) => {
+  if (!isoDateString) return new Date();
+  const datePart = isoDateString.split('T')[0];
+  const [year, month, day] = datePart.split('-');
+  return new Date(Number(year), Number(month) - 1, Number(day));
+};
+
 interface TradeRecord {
   _id: string;
   date: string;
@@ -101,10 +108,8 @@ export default function Trades() {
     const searchTerm = search.toLowerCase();
 
     return records.filter((r: TradeRecord) => {
-      const tradeDate = new Date(r.date);
-      const day = tradeDate.getDate().toString().padStart(2, '0');
-      const month = (tradeDate.getMonth() + 1).toString().padStart(2, '0');
-      const year = tradeDate.getFullYear().toString();
+      const dateStr = r.date.split('T')[0];
+      const [year, month, day] = dateStr.split('-');
 
       // Date Search Logic
       const dateParts = searchTerm.split(/[-/]/);
@@ -123,7 +128,7 @@ export default function Trades() {
 
       const notesMatch = r.notes?.toLowerCase().includes(searchTerm);
       const tagsMatch = r.tags?.some((t: string) => t.toLowerCase().includes(searchTerm));
-      const isoFormatMatch = format(tradeDate, 'yyyy-MM-dd').includes(searchTerm);
+      const isoFormatMatch = dateStr.includes(searchTerm);
 
       return dateMatch || notesMatch || tagsMatch || isoFormatMatch;
     });
@@ -246,7 +251,7 @@ export default function Trades() {
                   return (
                     <TableRow key={record._id} className="hover:bg-accent/5 border-border group transition-colors">
                       <TableCell className="px-4 md:px-8">
-                        <div className="font-bold md:font-normal text-xs md:text-sm whitespace-nowrap">{format(new Date(record.date), 'MMM dd, yyyy')}</div>
+                        <div className="font-bold md:font-normal text-xs md:text-sm whitespace-nowrap">{format(getLocalDate(record.date), 'MMM dd, yyyy')}</div>
                         <div className="text-[9px] md:text-[10px] text-muted-foreground mt-1 md:mt-1.5 flex items-center gap-2 font-black uppercase tracking-tighter opacity-70">
                           <div className="w-1 h-1 rounded-full bg-primary" />
                           {record.totalTrades > 0 ? `${record.totalTrades} Trade(s)` : 'Single Record'}
@@ -451,7 +456,7 @@ export default function Trades() {
                       Trade Analysis
                     </DialogTitle>
                     <DialogDescription className="text-muted-foreground font-medium mt-2 text-[10px] md:text-xs uppercase tracking-wider">
-                      Snapshot • {format(new Date(viewRecord.date), 'MMMM dd, yyyy')}
+                      Snapshot • {format(getLocalDate(viewRecord.date), 'MMMM dd, yyyy')}
                     </DialogDescription>
                   </div>
                 </div>

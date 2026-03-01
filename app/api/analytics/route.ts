@@ -48,9 +48,9 @@ export async function GET(request: Request) {
 
     // Use current server date if client doesn't provide one
     const todayStr = clientDate || new Date().toISOString().split('T')[0];
-    const today = new Date(todayStr);
-    const currentMonth = today.getMonth();
-    const currentYear = today.getFullYear();
+    const today = new Date(todayStr); // Parsed as UTC midnight if "YYYY-MM-DD"
+    const currentMonth = today.getUTCMonth();
+    const currentYear = today.getUTCFullYear();
 
     if (rawRecords.length === 0) {
       return NextResponse.json({
@@ -80,9 +80,9 @@ export async function GET(request: Request) {
       const dateObj = new Date(record.date);
       const isAfterReset = dateObj >= capitalUpdateDate;
 
-      const yearStr = dateObj.getFullYear();
-      const monthStr = String(dateObj.getMonth() + 1).padStart(2, '0');
-      const dayStrPart = String(dateObj.getDate()).padStart(2, '0');
+      const yearStr = dateObj.getUTCFullYear();
+      const monthStr = String(dateObj.getUTCMonth() + 1).padStart(2, '0');
+      const dayStrPart = String(dateObj.getUTCDate()).padStart(2, '0');
 
       const dayKey = `${yearStr}-${monthStr}-${dayStrPart}`;
       const monthPrefix = `${yearStr}-${monthStr}`;
@@ -177,7 +177,7 @@ export async function GET(request: Request) {
       growth: initialCapital + monthlyNet
     };
 
-    const yearlyTrades = rawRecords.filter(r => new Date(r.date).getFullYear() === currentYear);
+    const yearlyTrades = rawRecords.filter(r => new Date(r.date).getUTCFullYear() === currentYear);
     const yearlyNet = yearlyTrades.reduce((acc, r) => acc + (parseFloat(r.profit) || 0) - (parseFloat(r.loss) || 0), 0);
     const yearlyMetrics = {
       profit: yearlyTrades.reduce((acc, r) => acc + (parseFloat(r.profit) || 0), 0),

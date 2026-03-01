@@ -58,7 +58,7 @@ export default function DailyRecordForm({ initialData, onSubmit, isLoading }: Da
   const { register, handleSubmit, watch, setValue, formState: { errors } } = useForm({
     resolver: zodResolver(schema),
     defaultValues: {
-      date: initialData?.date ? format(new Date(initialData.date), 'yyyy-MM-dd') : today,
+      date: initialData?.date ? initialData.date.split('T')[0] : today,
       profit: initialData?.profit || 0,
       loss: initialData?.loss || 0,
       riskRewardRatio: initialData?.riskRewardRatio || '1:3',

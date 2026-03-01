@@ -11,7 +11,7 @@ import {
 } from "@/components/ui/popover";
 import { useGetTradesQuery } from "@/features/trades/tradesApi";
 import { cn } from "@/lib/utils";
-import { format, parseISO } from "date-fns";
+import { format } from "date-fns";
 import { Calendar as CalendarIcon, Loader2, Target, TrendingDown, TrendingUp, Zap } from "lucide-react";
 import { memo, useMemo } from "react";
 
@@ -179,7 +179,7 @@ export function TradingCalendar() {
     const map: Record<string, DailySummary> = {};
     if (Array.isArray(trades)) {
       trades.forEach((trade: { date: string; profit: string | number; loss: string | number; notes?: string }) => {
-        const dateKey = format(parseISO(trade.date), "yyyy-MM-dd");
+        const dateKey = trade.date.split('T')[0];
         if (!map[dateKey]) {
           map[dateKey] = {
             date: dateKey,
