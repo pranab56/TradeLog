@@ -10,6 +10,13 @@ import {
   Tooltip
 } from "recharts";
 
+const PROFIT_COLOR = "#4CAF50";
+const LOSS_COLOR = "#F44336";
+const CARD_BG_LIGHT = "#FFFFFF";
+const CARD_BG_DARK = "#1E1E1E";
+const BORDER_LIGHT = "#DDDDDD";
+const BORDER_DARK = "#444444";
+
 interface WinLossPieChartProps {
   wins: number;
   losses: number;
@@ -17,11 +24,21 @@ interface WinLossPieChartProps {
 
 export default function WinLossPieChart({ wins, losses }: WinLossPieChartProps) {
   const [mounted, setMounted] = useState(false);
-  useEffect(() => setMounted(true), []);
+  const [isDark, setIsDark] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+    setIsDark(document.documentElement.classList.contains('dark'));
+    const observer = new MutationObserver(() => {
+      setIsDark(document.documentElement.classList.contains('dark'));
+    });
+    observer.observe(document.documentElement, { attributes: true, attributeFilter: ['class'] });
+    return () => observer.disconnect();
+  }, []);
 
   const data = [
-    { name: 'Wins', value: wins, color: 'var(--profit)' },
-    { name: 'Losses', value: losses, color: 'var(--loss)' },
+    { name: 'Wins', value: wins, color: PROFIT_COLOR },
+    { name: 'Losses', value: losses, color: LOSS_COLOR },
   ];
 
   if (!mounted) return <div className="h-[300px] w-full" />;
@@ -45,8 +62,8 @@ export default function WinLossPieChart({ wins, losses }: WinLossPieChartProps) 
           </Pie>
           <Tooltip
             contentStyle={{
-              backgroundColor: 'var(--card)',
-              borderColor: 'var(--border)',
+              backgroundColor: isDark ? CARD_BG_DARK : CARD_BG_LIGHT,
+              borderColor: isDark ? BORDER_DARK : BORDER_LIGHT,
               borderRadius: '12px',
             }}
           />
