@@ -36,10 +36,10 @@ export default function ProfitLossChart({ data }: ProfitLossChartProps) {
   }, []);
 
   const totalPnL = data.reduce((acc, item) => acc + (item.net || 0), 0);
-  const isPositive = totalPnL > 0;
+  const isPositive = totalPnL >= 0;
   const isNegative = totalPnL < 0;
 
-  const chartColor = isPositive ? PROFIT_COLOR : isNegative ? LOSS_COLOR : NEUTRAL_COLOR;
+  const chartColor = isPositive ? PROFIT_COLOR : LOSS_COLOR;
   const cardBg = isDark ? CARD_BG_DARK : CARD_BG_LIGHT;
 
   if (!mounted) return <div className="h-[300px] w-full" />;
